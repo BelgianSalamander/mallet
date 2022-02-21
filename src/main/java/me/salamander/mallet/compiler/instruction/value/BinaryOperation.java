@@ -108,7 +108,23 @@ public class BinaryOperation implements Value {
         Op SHL = new NumberOp("<<");
         Op SHR = new NumberOp(">>");
         Op USHR = new NumberOp(">>>");
-        Op CMP = new NumberOp("cmp");
+
+        Op CMP = new Op() {
+            @Override
+            public boolean checkTypes(Type left, Type right) {
+                return left.equals(right);
+            }
+
+            @Override
+            public Type getResultingType(Type left, Type right) {
+                return Type.INT_TYPE;
+            }
+
+            @Override
+            public String toString() {
+                return "cmp";
+            }
+        };
 
         Op LT = new ComparisonOp("<");
         Op LE = new ComparisonOp("<=");

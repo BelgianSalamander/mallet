@@ -37,6 +37,14 @@ public class ExampleVertexShader extends VertexShader {
             if(i % 2 == 0 || i - 1 == 4){
                 test.x++;
             }
+
+            while (true) {
+                test.x--;
+
+                if (test.x == 0) {
+                    break;
+                }
+            }
         }
 
         testVector = new Vector4f(2.0f, 1.0f, 0.0f, -1.0f + f);

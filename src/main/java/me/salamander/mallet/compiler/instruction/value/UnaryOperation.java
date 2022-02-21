@@ -98,6 +98,17 @@ public class UnaryOperation implements Value{
 
         Op ISNULL = NullOp.ISNULL;
         Op ISNOTNULL = NullOp.ISNOTNULL;
+        Op NOT = new Op() {
+            @Override
+            public boolean checkType(Type type) {
+                return type.getSort() == Type.BOOLEAN;
+            }
+
+            @Override
+            public Type getResultingType(Type type) {
+                return type;
+            }
+        };
 
         static Op makeCheckCast(Type type){
             return new Op() {

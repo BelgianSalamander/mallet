@@ -1,7 +1,10 @@
 package me.salamander.mallet.compiler.cfg.instruction;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
+import me.salamander.mallet.compiler.cfg.instruction.instructions.CFGSpecialInstruction;
 import me.salamander.mallet.compiler.instruction.Instruction;
+import me.salamander.mallet.compiler.instruction.Label;
+import me.salamander.mallet.compiler.instruction.LabelInstruction;
 import me.salamander.mallet.util.Util;
 
 import java.io.PrintStream;
@@ -10,10 +13,10 @@ import java.util.Stack;
 import java.util.function.Consumer;
 
 public class InstructionNode extends CFGNode {
-    private Instruction instruction;
+    public Instruction instruction;
 
-    public InstructionNode(Instruction instruction, int id) {
-        super(id);
+    public InstructionNode(Instruction instruction, int id, InstructionCFG parent) {
+        super(id, parent);
         this.instruction = instruction;
 
         this.dominators.add(this);
@@ -33,21 +36,23 @@ public class InstructionNode extends CFGNode {
 
     @Override
     public void replaceSuccessor(CFGNode oldSuccessor, CFGNode newSuccessor) {
+        if(this.instruction instanceof CFGSpecialInstruction specialInsn) {
+            specialInsn.replaceTarget(oldSuccessor, newSuccessor);
+        }else if(oldSuccessor instanceof InstructionNode oldInstructionNode && newSuccessor instanceof InstructionNode newInstructionNode) {
+            if(oldInstructionNode.instruction instanceof LabelInstruction labelInstruction && newInstructionNode.instruction instanceof LabelInstruction newLabelInstruction) {
+                Instruction.replaceTargetLabel(
+                        this.instruction,
+                        labelInstruction.getLabel(),
+                        newLabelInstruction.getLabel()
+                );
+            }
+        }
+
         removeSuccessor(oldSuccessor);
         addSuccessor(newSuccessor);
     }
 
-    private void removePredecessor(InstructionNode predecessor) {
-        if (!this.predecessors.remove(predecessor)) {
-            return;
-        }
-
-        updateDominators();
-
-        predecessor.removeSuccessor(this);
-    }
-
-    private void removeSuccessor(CFGNode node) {
+    public void removeSuccessor(CFGNode node) {
         if (!this.successors.remove(node)) {
             return;
         }
@@ -57,5 +62,9 @@ public class InstructionNode extends CFGNode {
         if(node.predecessors.remove(this)) {
             node.updateDominators();
         }
+    }
+
+    public Instruction getInstruction() {
+        return instruction;
     }
 }

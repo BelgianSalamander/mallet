@@ -22,8 +22,11 @@ public abstract class CFGNode {
     protected Set<CFGNode> dominators = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
     protected Set<CFGNode> reachable = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
 
-    protected CFGNode(int id) {
+    public InstructionCFG parent;
+
+    protected CFGNode(int id, InstructionCFG parent) {
         this.id = id;
+        this.parent = parent;
     }
 
     public abstract void addSuccessor(CFGNode successor);
