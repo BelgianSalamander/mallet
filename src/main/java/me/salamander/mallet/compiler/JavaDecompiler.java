@@ -57,9 +57,11 @@ public class JavaDecompiler {
 
         InstructionCFG instructionCFG = new InstructionCFG(intermediaryCFG, this);
         instructionCFG.detectLoops();
+        instructionCFG.printInfo(System.out);
         instructionCFG.detectIfs();
         System.out.println("Detected all ifs:");
         instructionCFG.printInfo(System.out);
+        instructionCFG.displayGraph("CFG");
     }
 
     public int getNextTempVar(){

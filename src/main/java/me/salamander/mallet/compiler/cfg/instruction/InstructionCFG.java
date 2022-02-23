@@ -1,6 +1,9 @@
 package me.salamander.mallet.compiler.cfg.instruction;
 
+import it.unimi.dsi.fastutil.Function;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import me.salamander.mallet.compiler.JavaDecompiler;
 import me.salamander.mallet.compiler.cfg.BasicBlock;
@@ -14,8 +17,12 @@ import me.salamander.mallet.compiler.instruction.value.Variable;
 import me.salamander.mallet.compiler.instruction.value.VariableType;
 import me.salamander.mallet.util.Pair;
 import me.salamander.mallet.util.Util;
+import org.graphstream.graph.Graph;
+import org.graphstream.graph.Node;
+import org.graphstream.graph.implementations.SingleGraph;
+import org.graphstream.ui.swing_viewer.SwingViewer;
+import org.graphstream.ui.view.Viewer;
 import org.objectweb.asm.Type;
-import org.w3c.dom.Node;
 
 import java.io.PrintStream;
 import java.util.*;
@@ -245,12 +252,17 @@ public class InstructionCFG {
         Set<CFGNode> exitPoints = bodyNodes.stream().filter(node -> !bodyNodes.containsAll(node.getAllSuccessors())).collect(Collectors.toSet());
 
         Map<CFGNode, Set<CFGNode>> exits = new IdentityHashMap<>();
+        Set<CFGNode> externalExits = new HashSet<>();
 
         for(CFGNode exitPoint: exitPoints){
             Set<CFGNode> exitNodes = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
             for(CFGNode node: exitPoint.getAllSuccessors()){
                 if(!bodyNodes.contains(node)){
                     exitNodes.add(node);
+
+                    if(!exitPoint.successors.contains(node)){
+                        externalExits.add(node);
+                    }
                 }
             }
             exits.put(exitPoint, exitNodes);
@@ -271,7 +283,12 @@ public class InstructionCFG {
         innerCFG.predecessors.addAll(inNeighbors);
 
         for(Set<CFGNode> exit: exits.values()){
-            innerCFG.successors.addAll(exit);
+            //innerCFG.successors.addAll(exit);
+            for(CFGNode exitNode: exit){
+                if(!externalExits.contains(exitNode)) {
+                    innerCFG.successors.add(exitNode);
+                }
+            }
         }
 
         for(CFGNode exitPoint: exitPoints){
@@ -309,10 +326,44 @@ public class InstructionCFG {
 
         for(CFGNode successor: successors){
             successor.predecessors.add(node);
+            successor.predecessors.remove(entryPoint);
+            successor.predecessors.removeAll(node.innerCFGS());
+            successor.predecessors.removeIf(n -> {
+                for(InnerCFGNode innerCFG: node.innerCFGS()){
+                    if(innerCFG.getCFG().deepContains(n)){
+                        return true;
+                    }
+                }
+                return false;
+            });
         }
 
         entryPoint.predecessors.clear();
         entryPoint.successors.clear();
+    }
+
+    public void displayGraph(String name) {
+        System.setProperty("org.graphstream.ui", "swing");
+        Graph graph = new SingleGraph("CFG-" + name);
+
+        graph.setStrict(false);
+        graph.setAutoCreate(true);
+
+        Map<CFGNode, Node> graphNodes = new Object2ObjectOpenHashMap<>();
+        Function<CFGNode, Node> nodeMaker = key -> graph.addNode("Node #" + ((CFGNode) key).id);
+        this.start.visitDepthFirstPreorder(
+                node -> {},
+                (from, to) -> {
+                    graph.addEdge(
+                            from.id + " -> " + to.id,
+                            graphNodes.computeIfAbsent(from, nodeMaker),
+                            graphNodes.computeIfAbsent(to, nodeMaker),
+                            true
+                    );
+                }
+        );
+
+        Viewer viewer = graph.display();
     }
 
     /*private void makeIf(CFGNode headNode, CFGJumpIfInstruction jumpIf, CFGNode branchSuccessor, CFGNode end, boolean invertCondition) {
@@ -508,7 +559,16 @@ public class InstructionCFG {
     }
 
     public boolean deepContains(CFGNode node) {
-        for(CFGNode n: allNodes) {
+        Stack<CFGNode> stack = new Stack<>();
+        Set<CFGNode> visited = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
+
+        stack.push(this.getHead());
+
+        while(!stack.isEmpty()) {
+            CFGNode n = stack.pop();
+
+            if(!visited.add(n)) continue;
+
             if(n == node) return true;
 
             if(n instanceof NodeWithInner nodeWithInner){
@@ -516,6 +576,10 @@ public class InstructionCFG {
                     if(inner == node) return true;
                     if(inner.getCFG().deepContains(node)) return true;
                 }
+            }
+
+            for(CFGNode successor: n.successors) {
+                stack.push(successor);
             }
         }
 

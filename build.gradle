@@ -10,6 +10,10 @@ project.ext.lwjglNatives = "natives-windows"
 
 repositories {
     mavenCentral()
+    //Jitpack
+    maven {
+        url 'https://jitpack.io'
+    }
 }
 
 dependencies {
@@ -34,6 +38,9 @@ dependencies {
     implementation "org.joml:joml:1.10.1"
 
     implementation "it.unimi.dsi:fastutil:8.5.8"
+
+    implementation "com.github.graphstream:gs-core:2.0"
+    implementation "com.github.graphstream:gs-ui-swing:2.0"
 }
 
 test {

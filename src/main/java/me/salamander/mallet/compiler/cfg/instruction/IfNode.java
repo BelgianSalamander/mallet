@@ -14,9 +14,11 @@ public class IfNode extends NodeWithInner {
     private final InnerCFGNode body;
     private final Value condition;
     private final InstructionNode head;
+    private final CFGNode join;
 
     protected IfNode(int id, InstructionCFG parent, InstructionNode head, CFGNode bodyStart, CFGNode join, boolean invertCondition) {
         super(id, parent);
+        this.join = join;
         this.head = head;
 
         CFGJumpIfInstruction jumpIf = (CFGJumpIfInstruction) head.getInstruction();
@@ -29,7 +31,7 @@ public class IfNode extends NodeWithInner {
 
         Predicate<CFGNode> canBelongToBody = makeCanBelong(bodyStart, join);
 
-        if (!canBelongToBody.test(bodyStart)) {
+        if (!makeCanBelong(head, join).test(bodyStart)) {
             //Body would be empty, so we create a body which just has a goto. Below is an example of when this could happen
             /*
              * Source:
@@ -105,7 +107,7 @@ public class IfNode extends NodeWithInner {
 
         System.out.println("Successors:");
         for(CFGNode successor: getAllSuccessors()) {
-            System.out.println("\t" + successor.id);
+            System.out.println("\t" + successor.id + (!this.successors.contains(successor) ? " (EXTERNAL)" : ""));
         }
     }
 

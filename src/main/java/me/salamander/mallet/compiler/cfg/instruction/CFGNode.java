@@ -9,6 +9,7 @@ import me.salamander.mallet.util.Util;
 
 import java.io.PrintStream;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -35,7 +36,11 @@ public abstract class CFGNode {
 
     public abstract void replaceSuccessor(CFGNode oldSuccessor, CFGNode newSuccessor);
 
-    public void visitDepthFirstPreorder(Consumer<CFGNode> visitor) {
+    public void visitDepthFirstPreorder(Consumer<CFGNode> visitor){
+        this.visitDepthFirstPreorder(visitor, (node, successor) -> {});
+    }
+
+    public void visitDepthFirstPreorder(Consumer<CFGNode> visitor, BiConsumer<CFGNode, CFGNode> edgeVisitor) {
         Set<CFGNode> visited = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
 
         Stack<CFGNode> stack = new Stack<>();
@@ -50,6 +55,8 @@ public abstract class CFGNode {
 
                 for (CFGNode successor : node.successors) {
                     stack.push(successor);
+
+                    edgeVisitor.accept(node, successor);
                 }
             }
         }
@@ -155,7 +162,42 @@ public abstract class CFGNode {
             }
         }
 
-        return dominators.get(this).contains(other);
+        for (CFGNode cfgNode : dominators.get(this)) {
+            while (cfgNode != null) {
+                if(cfgNode == other) {
+                    return true;
+                }
+
+                cfgNode = cfgNode.parent.parent;
+            }
+        }
+
+        return false;
+    }
+
+    private Set<CFGNode> getLowestPredecessors() {
+        Set<CFGNode> lowestPredecessors = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
+
+        Set<CFGNode> toReduce = this.getAllPredecessors();
+        while (!toReduce.isEmpty()) {
+            Set<CFGNode> newToReduce = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
+            for(CFGNode node: toReduce) {
+                if(node instanceof NodeWithInner nodeWithInner) {
+                    for(InnerCFGNode innerCFG: nodeWithInner.innerCFGS()) {
+                        for (Map.Entry<CFGNode, Set<CFGNode>> entry : innerCFG.getCFG().getExternalConnections().entrySet()) {
+                            if(entry.getValue().contains(this)) {
+                                newToReduce.add(entry.getKey());
+                            }
+                        }
+                    }
+                }else {
+                    lowestPredecessors.add(node);
+                }
+            }
+            toReduce = newToReduce;
+        }
+
+        return lowestPredecessors;
     }
 
     public int getShortestPathTo(Predicate<CFGNode> target) {
@@ -211,7 +253,7 @@ public abstract class CFGNode {
         out.println("\tSuccessors:");
 
         for (CFGNode node : getAllSuccessors()) {
-            out.println("\t\t" + node.id);
+            out.println("\t\t" + node.id + (!successors.contains(node) ? " (EXTERNAL)" : ""));
         }
 
         out.println("\n");
