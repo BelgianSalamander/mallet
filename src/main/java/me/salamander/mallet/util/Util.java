@@ -2,8 +2,11 @@ package me.salamander.mallet.util;
 
 import it.unimi.dsi.fastutil.Hash;
 
+import java.util.*;
+import java.util.function.Supplier;
+
 public class Util {
-    public static final Hash.Strategy<Object> IDENTITY_HASH_STRATEGY = new Hash.Strategy<Object>() {
+    public static Hash.Strategy<Object> IDENTITY_HASH_STRATEGY = new Hash.Strategy<Object>() {
         public int hashCode(Object o) {
             return System.identityHashCode(o);
         }
@@ -12,4 +15,38 @@ public class Util {
             return o1 == o2;
         }
     };
+
+    public static <T> Set<T> union(Set<T>... sets) {
+        Set<T> union = new HashSet<T>();
+        for (Set<T> set : sets) {
+            union.addAll(set);
+        }
+        return union;
+    }
+
+    public static <T> Set<T> intersection(Collection<Set<T>> sets) {
+        if(sets.size() == 0) {
+            return new HashSet<>();
+        }else{
+            Iterator<Set<T>> setsIterator = sets.iterator();
+
+            Set<T> first = setsIterator.next();
+            Set<T>[] setsArray = new Set[sets.size() - 1];
+
+            int i = 0;
+            while(setsIterator.hasNext()) {
+                setsArray[i++] = setsIterator.next();
+            }
+
+            return intersection(first, setsArray);
+        }
+    }
+
+    public static <T> Set<T> intersection(Set<T> first, Set<T>... sets) {
+        Set<T> intersection = new HashSet<>(first);
+        for (Set<T> set : sets) {
+            intersection.retainAll(set);
+        }
+        return intersection;
+    }
 }

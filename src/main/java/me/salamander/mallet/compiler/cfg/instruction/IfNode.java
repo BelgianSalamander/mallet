@@ -1,88 +1,116 @@
 package me.salamander.mallet.compiler.cfg.instruction;
 
 import me.salamander.mallet.compiler.JavaDecompiler;
+import me.salamander.mallet.compiler.cfg.instruction.instructions.CFGGotoInstruction;
+import me.salamander.mallet.compiler.cfg.instruction.instructions.CFGJumpIfInstruction;
+import me.salamander.mallet.compiler.instruction.value.UnaryOperation;
+import me.salamander.mallet.compiler.instruction.value.Value;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.PrintStream;
+import java.util.*;
+import java.util.function.Predicate;
 
-//Code is very similat to LoopNode
-public class IfNode /*extends CFGNode*/ {
-    /*private InstructionCFG body;
-    private List<CFGNode> exitPoints;
+public class IfNode extends NodeWithInner {
+    private final InnerCFGNode body;
+    private final Value condition;
+    private final InstructionNode head;
 
-    protected IfNode(CFGNode jump, CFGNode start, Set<CFGNode> bodyNodes, InstructionCFG containing, JavaDecompiler decompiler, int id) {
-        super(id);
+    protected IfNode(int id, InstructionCFG parent, InstructionNode head, CFGNode bodyStart, CFGNode join, boolean invertCondition) {
+        super(id, parent);
+        this.head = head;
 
-        this.exitPoints = bodyNodes.stream()
-                .filter(n -> !bodyNodes.containsAll(n.successors))
-                .toList();
+        CFGJumpIfInstruction jumpIf = (CFGJumpIfInstruction) head.getInstruction();
 
-        this.body = new InstructionCFG(start, bodyNodes, containing.getIdCounter(), decompiler);
-
-        containing.addNode(this);
-        for(CFGNode predecessor: jump.predecessors) {
-            predecessor.replaceSuccessor(jump, this);
+        if (invertCondition) {
+            this.condition = new UnaryOperation(jumpIf.getCondition(), UnaryOperation.Op.NOT);
+        } else {
+            this.condition = jumpIf.getCondition();
         }
 
-        for(CFGNode exitPoint: exitPoints) {
-            for(CFGNode successor : exitPoint.successors) {
-                if(!bodyNodes.contains(successor)) {
-                    exitPoint.successors.remove(successor);
-                    exitPoint.updateReachable();
-                    successor.predecessors.remove(exitPoint);
-                    successor.updateDominators();
+        Predicate<CFGNode> canBelongToBody = makeCanBelong(bodyStart, join);
 
-                    this.successors.add(successor);
-                    this.updateReachable();
-                    successor.predecessors.add(this);
-                    successor.updateDominators();
-                }
+        if (!canBelongToBody.test(bodyStart)) {
+            //Body would be empty, so we create a body which just has a goto. Below is an example of when this could happen
+            /*
+             * Source:
+             * while(...) {
+             *    if(...) { //This "if then break" gets compiled into a conditional jump that exits the loop
+             *       break;
+             *    }
+             * }
+             * ...
+             */
+
+            CFGGotoInstruction gotoInstruction = new CFGGotoInstruction(bodyStart);
+            InstructionNode gotoNode = new InstructionNode(gotoInstruction, this.parent.getIdCounter().getAndIncrement(), this.parent);
+            gotoNode.addSuccessor(bodyStart);
+            head.replaceSuccessor(bodyStart, gotoNode);
+
+            bodyStart = gotoNode;
+
+            canBelongToBody = makeCanBelong(bodyStart, join);
+        }
+
+        Set<CFGNode> bodyNodes = new HashSet<>();
+
+        Stack<CFGNode> toProcess = new Stack<>();
+        Set<CFGNode> processed = new HashSet<>();
+        toProcess.push(bodyStart);
+
+        while (!toProcess.isEmpty()) {
+            CFGNode node = toProcess.pop();
+
+            if (!processed.add(node)) {
+                continue;
+            }
+
+            if (canBelongToBody.test(node)) {
+                bodyNodes.add(node);
+                toProcess.addAll(node.successors);
             }
         }
 
-        this.body.detectIfs();
+        this.body = parent.groupNodes(bodyNodes);
+    }
 
-        //Recompute successors
-        Set<CFGNode> newSuccessors = new HashSet<>();
-        Set<CFGNode> newExitPoints = new HashSet<>();
-        for(CFGNode node : this.body.getNodes()) {
-            for(CFGNode successor : node.successors) {
-                if(!this.body.deepContains(successor)) {
-                    newSuccessors.add(successor);
-                    newExitPoints.add(node);
-                }
-            }
+    private Predicate<CFGNode> makeCanBelong(CFGNode bodyStart, CFGNode join) {
+        Predicate<CFGNode> canBelongToBody = (node) -> node.isDominatedBy(bodyStart) && bodyStart.canReach(node, node1 -> node1 != join, true);
+
+        if (parent.parent != null && parent.parent instanceof LoopNode loopNode) {
+            //We don't want to loop around
+            CFGNode loopHead = loopNode.getEntryPoint();
+            canBelongToBody = canBelongToBody.and((node) -> node != loopHead);
         }
 
-        this.exitPoints = new ArrayList<>(newExitPoints);
+        return canBelongToBody;
+    }
 
-        for(CFGNode successor : newSuccessors) {
-            successor.predecessors.remove(this);
-            successor.updateDominators();
-        }
-
-        this.successors.clear();
-        this.successors.addAll(newSuccessors);
-        this.updateReachable();
+    public void addToCFG(){
+        this.parent.addNodeWithCFGs(this, head);
+        this.body.getCFG().detectIfs();
     }
 
     @Override
-    public void addSuccessor(CFGNode successor) {
-        throw new UnsupportedOperationException("Cannot add successors to an IfNode");
+    protected String getDescription() {
+        return null;
     }
 
     @Override
-    public void replaceSuccessor(CFGNode oldSuccessor, CFGNode newSuccessor) {
-        for(CFGNode exitPoint: exitPoints) {
-            if (exitPoint.successors.contains(oldSuccessor)) {
-                exitPoint.replaceSuccessor(oldSuccessor, newSuccessor);
-            }
+    public void printInfo(PrintStream out) {
+        System.out.println("IF Node: " + this.id);
+        System.out.println("Condition: " + this.condition);
+        System.out.println("=== BODY START ===");
+        this.body.getCFG().printInfo(out);
+        System.out.println("=== BODY END (" + this.id + ") ===");
+
+        System.out.println("Successors:");
+        for(CFGNode successor: getAllSuccessors()) {
+            System.out.println("\t" + successor.id);
         }
     }
 
-    public InstructionCFG getBody() {
-        return body;
-    }*/
+    @Override
+    public Collection<InnerCFGNode> innerCFGS() {
+        return List.of(this.body);
+    }
 }

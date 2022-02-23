@@ -27,7 +27,8 @@ public class InstructionCFG {
     private final Map<Instruction, CFGNode> nodes = new IdentityHashMap<>();
     private final List<CFGNode> allNodes = new ArrayList<>();
     private final Map<CFGNode, Set<CFGNode>> externalConnections = new IdentityHashMap<>();
-    private final CFGNode start;
+    private final StartNode start;
+    public NodeWithInner parent;
     private AtomicInteger idCounter = new AtomicInteger();
 
     public InstructionCFG(IntermediaryCFG intermediaryCFG, JavaDecompiler decompiler) {
@@ -86,6 +87,8 @@ public class InstructionCFG {
 
         CFGNode start = getNode(startBlock.getNext().get(0).getInstructions().get(0));
 
+        Variable redundantConditions = new Variable(Type.BOOLEAN_TYPE, decompiler.getNextTempVar(), VariableType.SYNTHETIC);
+
         //Replace control flow instruction with special instructions
         for (CFGNode node : nodes.values()) {
             InstructionNode instructionNode = (InstructionNode) node;
@@ -100,7 +103,14 @@ public class InstructionCFG {
                 CFGNode jumpIfTarget = labelNodes.get(jumpIfInstruction.getTarget());
                 CFGNode normalFlowLabel = node.successors.stream().filter(s -> !s.equals(jumpIfTarget)).findFirst().orElse(null);
 
-                instructionNode.instruction = new CFGJumpIfInstruction(normalFlowLabel, jumpIfTarget, jumpIfInstruction.getCondition());
+                if(jumpIfTarget == normalFlowLabel) {
+                    instructionNode.instruction = new AssignmentInstruction(
+                            redundantConditions,
+                            jumpIfInstruction.getCondition()
+                    );
+                }else {
+                    instructionNode.instruction = new CFGJumpIfInstruction(normalFlowLabel, jumpIfTarget, jumpIfInstruction.getCondition());
+                }
             }else if(instructionNode.instruction instanceof SwitchInstruction switchInstruction) {
                 CFGNode defaultLabel = switchInstruction.getDefaultBranch() != null ? labelNodes.get(switchInstruction.getDefaultBranch()) : null;
 
@@ -156,8 +166,6 @@ public class InstructionCFG {
 
         this.start = new StartNode(idCounter.getAndIncrement(), this, start);
         allNodes.add(this.start);
-
-        this.start.visitDepthFirstPreorder(node -> node.printInfo(System.out));
     }
 
     private InstructionCFG(CFGNode entryPoint, Set<CFGNode> bodyNodes, AtomicInteger idCounter, JavaDecompiler javaDecompiler, Map<CFGNode, Set<CFGNode>> externalConnections) {
@@ -171,55 +179,60 @@ public class InstructionCFG {
         bodyNodes.forEach(node -> node.parent = this);
     }
 
-    public void recalculateDominatorsAndReach(){
-        //I probably messed up the dominator info when creating the loop, so we fix it
-        for(CFGNode node: allNodes){
-            node.updateDominators();
-            node.updateReachable();
-
-            if(node instanceof NodeWithInner innerCFGNode){
-                for(InnerCFGNode inner : innerCFGNode.innerCFGS()) {
-                    inner.getCFG().recalculateDominatorsAndReach();
-                }
-            }
-        }
-    }
-
     public void detectLoops() {
         detectLoops(null);
     }
 
-    /*public void detectIfs(){
-        for (CFGNode node: start.reachable) {
-            if(node instanceof LoopNode loop){
-                loop.getLoop().detectIfs();
-            }
-        }
-
+    public void detectIfs() {
         boolean changed = true;
+        boolean triggeredInners = false;
 
         while (changed) {
             changed = false;
-            for (CFGNode node : start.reachable) {
 
-                if (!(node instanceof InstructionNode insnNode)) continue;
-                if (!(insnNode.instruction instanceof CFGJumpIfInstruction jumpIf)) continue;
+            Stack<CFGNode> toProcess = new Stack<>();
+            Set<CFGNode> processed = new HashSet<>();
+            toProcess.push(start);
+            while (!toProcess.isEmpty()) {
+                CFGNode node = toProcess.pop();
 
-                changed = true;
-
-                if (jumpIf.getIfTrue().reachable.contains(jumpIf.getNormal())) {
-                    makeIf(node, jumpIf, jumpIf.getIfTrue(), jumpIf.getNormal(), false);
-                }else if(jumpIf.getNormal().reachable.contains(jumpIf.getIfTrue())){
-                    makeIf(node, jumpIf, jumpIf.getNormal(), jumpIf.getIfTrue(), true);
-                }else {
-                    System.out.println("Skipped if else");
-                    //makeIfElse(node, jumpIf);
+                if(!processed.add(node)) {
+                    continue;
                 }
 
-                break;
+                if(node instanceof NodeWithInner nodeWithInner && !triggeredInners) {
+                    for(InnerCFGNode inner: nodeWithInner.innerCFGS()) {
+                        inner.getCFG().detectIfs();
+                    }
+                }
+
+                if(node instanceof InstructionNode insnNode) {
+                    if(insnNode.instruction instanceof CFGJumpIfInstruction jumpIf) {
+                        if(jumpIf.getIfTrue().canReach(jumpIf.getNormal(), node1 -> node1 != node, false)) {
+                            IfNode ifNode = new IfNode(idCounter.getAndIncrement(), this, insnNode, jumpIf.getIfTrue(), jumpIf.getNormal(), false);
+                            ifNode.addToCFG();
+                            changed = true;
+                            break;
+                        }else if(jumpIf.getNormal().canReach(jumpIf.getIfTrue(), node1 -> node1 != node, false)) {
+                            IfNode ifNode = new IfNode(idCounter.getAndIncrement(), this, insnNode, jumpIf.getNormal(), jumpIf.getIfTrue(), true);
+                            ifNode.addToCFG();
+                            changed = true;
+                            break;
+                        }else{
+                            IfElseNode ifElseNode = new IfElseNode(idCounter.getAndIncrement(), this, insnNode, jumpIf.getIfTrue(), jumpIf.getNormal());
+                            ifElseNode.addToCFG();
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+
+                toProcess.addAll(node.successors);
             }
+
+            triggeredInners = true;
         }
-    }*/
+    }
 
     public InnerCFGNode groupNodes(Set<CFGNode> bodyNodes) {
         Set<CFGNode> entryPoints = bodyNodes.stream().filter(node -> !bodyNodes.containsAll(node.predecessors)).collect(Collectors.toSet());
@@ -229,13 +242,13 @@ public class InstructionCFG {
 
         CFGNode entryPoint = entryPoints.iterator().next();
 
-        Set<CFGNode> exitPoints = bodyNodes.stream().filter(node -> !bodyNodes.containsAll(node.successors)).collect(Collectors.toSet());
+        Set<CFGNode> exitPoints = bodyNodes.stream().filter(node -> !bodyNodes.containsAll(node.getAllSuccessors())).collect(Collectors.toSet());
 
         Map<CFGNode, Set<CFGNode>> exits = new IdentityHashMap<>();
 
         for(CFGNode exitPoint: exitPoints){
             Set<CFGNode> exitNodes = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
-            for(CFGNode node: exitPoint.successors){
+            for(CFGNode node: exitPoint.getAllSuccessors()){
                 if(!bodyNodes.contains(node)){
                     exitNodes.add(node);
                 }
@@ -248,18 +261,18 @@ public class InstructionCFG {
         entryPoint.predecessors.removeIf(node -> !bodyNodes.contains(node));
 
         InstructionCFG newCFG = new InstructionCFG(entryPoint, bodyNodes, idCounter, decompiler, exits);
-        newCFG.recalculateDominatorsAndReach();
         InnerCFGNode innerCFG = new InnerCFGNode(idCounter.getAndIncrement(), this, newCFG);
         this.allNodes.add(innerCFG);
+
+        for(CFGNode inNeighbor: inNeighbors){
+            inNeighbor.replaceSuccessor(entryPoint, innerCFG);
+        }
 
         innerCFG.predecessors.addAll(inNeighbors);
 
         for(Set<CFGNode> exit: exits.values()){
             innerCFG.successors.addAll(exit);
         }
-
-        innerCFG.updateDominators();
-        innerCFG.updateReachable();
 
         for(CFGNode exitPoint: exitPoints){
             if(this.externalConnections.containsKey(exitPoint)){
@@ -279,16 +292,27 @@ public class InstructionCFG {
 
         node.predecessors.clear();
         node.predecessors.addAll(inNeighbors);
-        node.updateDominators();
+
+        for(CFGNode inNeighbor: inNeighbors) {
+            inNeighbor.replaceSuccessor(entryPoint, node);
+        }
 
         Set<CFGNode> successors = new ObjectOpenCustomHashSet<>(Util.IDENTITY_HASH_STRATEGY);
         successors.addAll(entryPoint.successors);
         for(InnerCFGNode innerCFG: node.innerCFGS()){
             successors.addAll(innerCFG.successors);
+            innerCFG.getCFG().parent = node;
         }
+        successors.removeIf(node1 -> node.innerCFGS().contains(node1));
         node.successors.clear();
         node.successors.addAll(successors);
-        node.updateReachable();
+
+        for(CFGNode successor: successors){
+            successor.predecessors.add(node);
+        }
+
+        entryPoint.predecessors.clear();
+        entryPoint.successors.clear();
     }
 
     /*private void makeIf(CFGNode headNode, CFGJumpIfInstruction jumpIf, CFGNode branchSuccessor, CFGNode end, boolean invertCondition) {
@@ -318,8 +342,6 @@ public class InstructionCFG {
         for (StronglyConnectedComponent scc : sccs) {
             makeLoop(scc);
         }
-
-        recalculateDominatorsAndReach();
     }
 
     public void printInfo(PrintStream out){
@@ -343,7 +365,8 @@ public class InstructionCFG {
             singleEntryPoint = entryPoints.iterator().next();
         }
 
-        new LoopNode(singleEntryPoint, scc.nodes, this, idCounter.getAndIncrement());
+        LoopNode loopNode = new LoopNode(singleEntryPoint, scc.nodes, this, idCounter.getAndIncrement());
+        this.addNodeWithCFGs(loopNode, loopNode.getBody());
     }
 
     private CFGNode makeSingleEntryPoint(CFGNode naturalEntryPoint, Set<CFGNode> entryPoints, StronglyConnectedComponent scc) {
@@ -501,6 +524,10 @@ public class InstructionCFG {
 
     public AtomicInteger getIdCounter() {
         return idCounter;
+    }
+
+    public StartNode getHead() {
+        return start;
     }
 
 

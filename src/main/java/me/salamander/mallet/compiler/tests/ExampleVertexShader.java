@@ -28,7 +28,7 @@ public class ExampleVertexShader extends VertexShader {
     private static Vector4f testVector;
 
     public static void main(float f){
-        calculatePosition();
+        /*calculatePosition();
         fragColor = calculateColor(color);
 
         Vector4f test = copy(fragColor);
@@ -47,7 +47,15 @@ public class ExampleVertexShader extends VertexShader {
             }
         }
 
-        testVector = new Vector4f(2.0f, 1.0f, 0.0f, -1.0f + f);
+        testVector = new Vector4f(2.0f, 1.0f, 0.0f, -1.0f + f);*/
+        Vector3f vec = new Vector3f(1.0f, 2.0f, 3.0f);
+        int a = 0;
+        if(f > 0) {
+            if(f == 1){
+                a = 1;
+            }
+        }
+        vec.x = a;
     }
 
     private static Vector4f calculateColor(Vector3f color) {

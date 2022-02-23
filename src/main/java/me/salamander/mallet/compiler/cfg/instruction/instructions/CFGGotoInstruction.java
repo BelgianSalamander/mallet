@@ -32,4 +32,9 @@ public class CFGGotoInstruction extends CFGSpecialInstruction {
     public Instruction copy(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
         return new CFGGotoInstruction(target);
     }
+
+    @Override
+    public String toString() {
+        return "goto " + target.id;
+    }
 }

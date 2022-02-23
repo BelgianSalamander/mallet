@@ -1,16 +1,8 @@
 package me.salamander.mallet.compiler.cfg.instruction;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import me.salamander.mallet.compiler.cfg.instruction.instructions.CFGSpecialInstruction;
 import me.salamander.mallet.compiler.instruction.Instruction;
-import me.salamander.mallet.compiler.instruction.Label;
 import me.salamander.mallet.compiler.instruction.LabelInstruction;
-import me.salamander.mallet.util.Util;
-
-import java.io.PrintStream;
-import java.util.Set;
-import java.util.Stack;
-import java.util.function.Consumer;
 
 public class InstructionNode extends CFGNode {
     public Instruction instruction;
@@ -18,20 +10,11 @@ public class InstructionNode extends CFGNode {
     public InstructionNode(Instruction instruction, int id, InstructionCFG parent) {
         super(id, parent);
         this.instruction = instruction;
-
-        this.dominators.add(this);
     }
 
     public void addSuccessor(CFGNode successor) {
-        if (!this.successors.add(successor)) {
-            return;
-        }
-
-        updateReachable();
-
-        if(successor.predecessors.add(this)) {
-            successor.updateDominators();
-        }
+        this.successors.add(successor);
+        successor.predecessors.add(this);
     }
 
     @Override
@@ -52,16 +35,14 @@ public class InstructionNode extends CFGNode {
         addSuccessor(newSuccessor);
     }
 
+    @Override
+    protected String getDescription() {
+        return "Instruction (" + this.instruction + ")";
+    }
+
     public void removeSuccessor(CFGNode node) {
-        if (!this.successors.remove(node)) {
-            return;
-        }
-
-        updateReachable();
-
-        if(node.predecessors.remove(this)) {
-            node.updateDominators();
-        }
+        this.successors.remove(node);
+        node.predecessors.remove(this);
     }
 
     public Instruction getInstruction() {

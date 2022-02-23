@@ -1,5 +1,8 @@
 package me.salamander.mallet.compiler.cfg.instruction;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StartNode extends CFGNode {
     private CFGNode next;
 
@@ -9,9 +12,6 @@ public class StartNode extends CFGNode {
 
         this.successors.add(next);
         next.predecessors.add(this);
-
-        this.updateReachable();
-        next.updateDominators();
     }
 
     @Override
@@ -23,6 +23,29 @@ public class StartNode extends CFGNode {
     public void replaceSuccessor(CFGNode oldSuccessor, CFGNode newSuccessor) {
         if(next == oldSuccessor) {
             next = newSuccessor;
+
+            successors.clear();
+            successors.add(newSuccessor);
+
+            oldSuccessor.predecessors.remove(this);
+            newSuccessor.predecessors.add(this);
         }
+    }
+
+    @Override
+    protected String getDescription() {
+        return "Start";
+    }
+
+    public List<CFGNode> getAllNodes() {
+        List<CFGNode> nodes = new ArrayList<>();
+
+        this.next.visitDepthFirstPreorder(nodes::add);
+
+        return nodes;
+    }
+
+    public CFGNode getNext() {
+        return next;
     }
 }

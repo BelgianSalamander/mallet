@@ -40,6 +40,11 @@ public class CFGJumpIfInstruction extends CFGSpecialInstruction {
         return new CFGJumpIfInstruction(normal, ifTrue, valueCopier.apply(condition));
     }
 
+    @Override
+    public String toString() {
+        return "goto " + ifTrue.id + " if " + condition + " else " + normal.id;
+    }
+
     public CFGNode getNormal() {
         return normal;
     }

@@ -72,6 +72,11 @@ public class UnaryOperation implements Value{
     }
 
     @Override
+    public String toString() {
+        return op.toString() + arg.toString();
+    }
+
+    @Override
     public Mutability getMutability(MutabilityValue varMutability) {
         return Mutability.IMMUTABLE;
     }
@@ -108,6 +113,11 @@ public class UnaryOperation implements Value{
             public Type getResultingType(Type type) {
                 return type;
             }
+
+            @Override
+            public String toString() {
+                return "!";
+            }
         };
 
         static Op makeCheckCast(Type type){
@@ -120,6 +130,11 @@ public class UnaryOperation implements Value{
                 @Override
                 public Type getResultingType(Type t) {
                     return type;
+                }
+
+                @Override
+                public String toString() {
+                    return "(" + type.getDescriptor() + ")";
                 }
             };
         }
@@ -134,6 +149,11 @@ public class UnaryOperation implements Value{
                 @Override
                 public Type getResultingType(Type t) {
                     return Type.BOOLEAN_TYPE;
+                }
+
+                @Override
+                public String toString() {
+                    return "instanceof " + type.getInternalName();
                 }
             };
         }
@@ -158,6 +178,11 @@ public class UnaryOperation implements Value{
         public Type getResultingType(Type type) {
             return type;
         }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
     private static class NumberConvertOp implements Op{
@@ -177,6 +202,11 @@ public class UnaryOperation implements Value{
         @Override
         public Type getResultingType(Type type) {
             return resultType;
+        }
+
+        @Override
+        public String toString() {
+            return name;
         }
     }
 
@@ -198,6 +228,12 @@ public class UnaryOperation implements Value{
         @Override
         public Type getResultingType(Type type) {
             return Type.BOOLEAN_TYPE;
+        }
+
+
+        @Override
+        public String toString() {
+            return inverted ? "isnull" : "isnotnull";
         }
     }
 }

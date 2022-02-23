@@ -66,7 +66,7 @@ public class MutabilitySemiLattice extends SemiLattice<MutabilityValue> {
                 Mutability mutability = val.getMutability(value);
 
                 if(mutability == Mutability.PASSIVE_MUTABLE){
-                    if(assignment.getLocation() instanceof Variable var) {
+                    if(assignment.getValue() instanceof Variable var) {
                         value = value.set(var, Mutability.IMMUTABLE);
                         value = value.set(variable, Mutability.MUTABLE);
                     }else{

@@ -27,13 +27,14 @@ public class InnerCFGNode extends CFGNode {
 
         this.successors.remove(oldSuccessor);
         oldSuccessor.predecessors.remove(this);
-        oldSuccessor.updateDominators();
 
         this.successors.add(newSuccessor);
         newSuccessor.predecessors.add(this);
-        newSuccessor.updateDominators();
+    }
 
-        this.updateReachable();
+    @Override
+    protected String getDescription() {
+        return "Inner CFG Node (This really shouldn't be outputted)" + (this.parent == null ? "" : (this.parent.parent == null ? "" : " (Parent: " + this.parent.parent.id + ")"));
     }
 
     public InstructionCFG getCFG() {
