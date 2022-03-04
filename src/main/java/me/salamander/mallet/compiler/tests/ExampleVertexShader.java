@@ -34,12 +34,32 @@ public class ExampleVertexShader extends VertexShader {
         Vector4f test = copy(fragColor);
 
         for(int i = 0; i < 10; i++) {
-            if(i == 5) break;
+            if(i == 5 || i == 2) {
+                test.y = i == 2 ? 1.0f : 0.0f;
+                break;
+            }
 
             test.x++;
+
+            for(int j = 0; j < 10; j++) {
+                if(j == 2) {
+                    continue;
+                }
+
+                test.x -= j + 1;
+            }
         }
 
-        testVector = new Vector4f(2.0f, 1.0f, 0.0f, -1.0f + f);
+        L:
+        {
+            if (test.x == 0) {
+                testVector = new Vector4f(1.0f, 1.0f, 1.0f, 1.0f);
+                break L;
+            } else {
+                testVector = new Vector4f(2.0f, 1.0f, 0.0f, -1.0f + f);
+            }
+            test.x = 1.0f;
+        }
     }
 
     private static Vector4f calculateColor(Vector3f color) {

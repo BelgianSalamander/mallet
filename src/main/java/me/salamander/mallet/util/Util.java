@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.Hash;
 
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class Util {
     public static Hash.Strategy<Object> IDENTITY_HASH_STRATEGY = new Hash.Strategy<Object>() {
@@ -16,6 +18,7 @@ public class Util {
         }
     };
 
+    @SafeVarargs
     public static <T> Set<T> union(Set<T>... sets) {
         Set<T> union = new HashSet<T>();
         for (Set<T> set : sets) {
@@ -48,5 +51,14 @@ public class Util {
             intersection.retainAll(set);
         }
         return intersection;
+    }
+
+    public static <T> Set<T> makeSet(Iterable<T> original) {
+        return StreamSupport.stream(original.spliterator(), false).collect(Collectors.toSet());
+    }
+
+    //Useful in debugging StackOverflowErrors
+    public static boolean isCallStackLarge() {
+        return Thread.currentThread().getStackTrace().length > 1000;
     }
 }

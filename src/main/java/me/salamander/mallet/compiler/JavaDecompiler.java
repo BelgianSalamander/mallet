@@ -9,6 +9,9 @@ import me.salamander.mallet.compiler.analysis.mutability.MutabilitySemiLattice;
 import me.salamander.mallet.compiler.analysis.usage.PossibleValuesTracker;
 import me.salamander.mallet.compiler.analysis.valuetrack.ValueTrackValue;
 import me.salamander.mallet.compiler.analysis.valuetrack.ValueTracker;
+import me.salamander.mallet.compiler.ast.make.AbstractSyntaxTreeMaker;
+import me.salamander.mallet.compiler.ast.make.cfg.ControlFlowGraph;
+import me.salamander.mallet.compiler.ast.node.ASTNode;
 import me.salamander.mallet.compiler.cfg.BasicBlock;
 import me.salamander.mallet.compiler.cfg.instruction.InstructionCFG;
 import me.salamander.mallet.compiler.cfg.IntermediaryCFG;
@@ -55,13 +58,12 @@ public class JavaDecompiler {
         List<Instruction> instructions = makeIntermediateRepresentation();
         IntermediaryCFG intermediaryCFG = createIntermediaryCFG(instructions);
 
-        InstructionCFG instructionCFG = new InstructionCFG(intermediaryCFG, this);
-        instructionCFG.detectLoops();
-        instructionCFG.printInfo(System.out);
-        instructionCFG.detectIfs();
-        System.out.println("Detected all ifs:");
-        instructionCFG.printInfo(System.out);
-        instructionCFG.displayGraph("CFG");
+        AbstractSyntaxTreeMaker astMaker = new AbstractSyntaxTreeMaker(intermediaryCFG);
+        ASTNode astRoot = astMaker.make();
+
+        StringBuilder sb = new StringBuilder();
+        astRoot.print(sb);
+        System.out.println(sb);
     }
 
     public int getNextTempVar(){

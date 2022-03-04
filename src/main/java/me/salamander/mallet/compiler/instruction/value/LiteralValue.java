@@ -75,7 +75,9 @@ public class LiteralValue implements Value {
             return value.toString() + "d";
         }else if(value instanceof String){
             return "\"" + value + "\"";
-        }else{
+        }else if(value instanceof Boolean) {
+            return value.toString();
+        } else{
             throw new RuntimeException("Unknown literal type: " + type);
         }
     }

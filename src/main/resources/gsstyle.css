@@ -1,0 +1,8 @@
+node {
+    shape: box;
+    size: 30;
+    fill-color: gray;
+    stroke-mode: plain;
+    stroke-color: black;
+    stroke-width: 3;
+}

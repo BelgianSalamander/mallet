@@ -62,7 +62,7 @@ public class ValueTrackValue extends me.salamander.mallet.compiler.analysis.Valu
         Map<Variable, Value> merged = new HashMap<>();
 
         for (Map.Entry<Variable, Value> entry : values.entrySet()) {
-            if(other.values.containsKey(entry.getKey()) && !other.values.get(entry.getKey()).equals(entry.getValue())) {
+            if(other.values.containsKey(entry.getKey()) && other.values.get(entry.getKey()).equals(entry.getValue())) {
                 merged.put(entry.getKey(), entry.getValue());
             }
         }
