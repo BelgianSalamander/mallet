@@ -64,6 +64,19 @@ public abstract class SETNode {
                 }
 
                 this.children.removeAll(loweredChildren);
+                List<SETNode> sort = this.topologicalSort.get(subBody);
+
+                if (sort != null) {
+                    int i = 0;
+                    for (; i < sort.size(); i++) {
+                        if (loweredChildren.contains(sort.get(i))) {
+                            break;
+                        }
+                    }
+
+                    sort.removeAll(loweredChildren);
+                    sort.add(i, node);
+                }
 
                 return;
             }
@@ -329,16 +342,18 @@ public abstract class SETNode {
 
     public CFGNode getSortSuccessor() {
         SETNode curr = this.parent;
+        SETNode searchFor = this;
 
         while (curr != null) {
             for (List<SETNode> sort : curr.topologicalSort.values()) {
                 for (int i = 0; i < sort.size() - 1; i++) {
-                    if (sort.get(i) == this) {
+                    if (sort.get(i) == searchFor) {
                         return sort.get(i + 1).getEntryPoint();
                     }
                 }
             }
 
+            searchFor = curr;
             curr = curr.parent;
         }
 

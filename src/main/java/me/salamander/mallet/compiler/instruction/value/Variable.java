@@ -9,18 +9,18 @@ import java.util.Objects;
 import java.util.function.Function;
 
 public class Variable implements Location, Value{
-    private Type valueType;
+    private Type typeFirstGuess;
     private int index;
     private VariableType variableType;
 
     public Variable(Type valueType, int index, VariableType variableType){
-        this.valueType = valueType;
+        this.typeFirstGuess = valueType;
         this.index = index;
         this.variableType = variableType;
     }
 
-    public Type getValueType(){
-        return valueType;
+    public Type getTypeFirstGuess(){
+        return typeFirstGuess;
     }
 
     public int getIndex(){
@@ -43,8 +43,8 @@ public class Variable implements Location, Value{
         return variableType == VariableType.SYNTHETIC;
     }
 
-    public void setValueType(Type valueType) {
-        this.valueType = valueType;
+    public void setTypeFirstGuess(Type typeFirstGuess) {
+        this.typeFirstGuess = typeFirstGuess;
     }
 
     public void setIndex(int index) {
@@ -62,7 +62,7 @@ public class Variable implements Location, Value{
 
     @Override
     public Type getType() {
-        return valueType;
+        return typeFirstGuess;
     }
 
     @Override
@@ -91,7 +91,7 @@ public class Variable implements Location, Value{
 
     @Override
     public Value copyValue(Function<Value, Value> innerValueCopier) {
-        return new Variable(valueType, index, variableType);
+        return new Variable(typeFirstGuess, index, variableType);
     }
 
     @Override

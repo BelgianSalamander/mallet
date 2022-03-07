@@ -1,12 +1,23 @@
 package me.salamander.mallet.compiler;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import me.salamander.mallet.annotation.MutatesSelf;
 import me.salamander.mallet.annotation.Out;
-import me.salamander.mallet.compiler.instruction.value.StaticField;
+import me.salamander.mallet.annotation.ReturnMutable;
+import me.salamander.mallet.compiler.analysis.defined.DefinedSemilattice;
+import me.salamander.mallet.compiler.analysis.defined.DefinedValue;
+import me.salamander.mallet.compiler.ast.node.ASTNode;
+import me.salamander.mallet.compiler.astanalysis.ASTAnalysis;
+import me.salamander.mallet.compiler.astanalysis.ASTAnalysisResults;
+import me.salamander.mallet.compiler.constant.Constant;
+import me.salamander.mallet.compiler.instruction.Instruction;
+import me.salamander.mallet.compiler.instruction.value.*;
 import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.MethodInvocation;
+import me.salamander.mallet.util.Ref;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
@@ -14,6 +25,7 @@ import org.objectweb.asm.tree.*;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 public class ShaderCompiler {
     private final GlobalCompilationContext globalContext;
@@ -32,9 +44,65 @@ public class ShaderCompiler {
 
     public String compile(Object... mainArgs) {
         JavaDecompiler mainDecompiler = makeMainDecompiler();
-        mainDecompiler.decompile();
+        ASTNode astRoot = mainDecompiler.decompile();
+        MethodNode method = mainDecompiler.getMethodNode();
+        Type[] args = Type.getArgumentTypes(method.desc);
+
+        Int2ObjectMap<Object> inlineArgs = new Int2ObjectOpenHashMap<>();
+        int varIndex = 0;
+        for(int i = 0; i < mainArgs.length; i++) {
+            inlineArgs.put(varIndex, mainArgs[i]);
+            varIndex += args[i].getSize();
+        }
+        astRoot = inlineConstants(method, astRoot, inlineArgs);
+
+        StringBuilder sb = new StringBuilder();
+        astRoot.print(sb);
+        System.out.println(sb);
 
         return "";
+    }
+
+    private ASTNode inlineConstants(MethodNode methodNode, ASTNode decompiled, Int2ObjectMap<Object> args) {
+        ASTAnalysisResults<DefinedValue> definedValues = ASTAnalysis.analyseMethod(new DefinedSemilattice(), decompiled);
+
+        Ref<ASTNode> curr = new Ref<>(null);
+
+        return inlineConstants(definedValues, decompiled, args, curr);
+    }
+
+    private ASTNode inlineConstants(ASTAnalysisResults<DefinedValue> definedValues, ASTNode decompiled, Int2ObjectMap<Object> args, Ref<ASTNode> curr) {
+        curr.value = decompiled;
+
+        Function<Value, Value> valueCopier = (val) -> inlineValueConstant(val, definedValues, args, curr.value);
+
+        return decompiled.copy(
+                node -> inlineConstants(definedValues, node, args, curr),
+                insn -> {
+                    return insn.copy(
+                            valueCopier,
+                            loc -> (Location) loc.copyValue(valueCopier)
+                    );
+                },
+                valueCopier
+        );
+    }
+
+    private Value inlineValueConstant(Value value, ASTAnalysisResults<DefinedValue> definedValues, Int2ObjectMap<Object> args, ASTNode insn) {
+        value = value.copyValue(
+                (node) -> inlineValueConstant(node, definedValues, args, insn)
+        );
+
+        if (value instanceof Variable var) {
+            if (var.getVariableType() == VariableType.LOCAL) {
+                int index = var.getIndex();
+                if (!definedValues.in.get(insn).getDefinedVars().contains(var)) {
+                    return new Constant(args.get(index), var);
+                }
+            }
+        }
+
+        return value;
     }
 
     private JavaDecompiler makeMainDecompiler() {
@@ -148,6 +216,21 @@ public class ShaderCompiler {
                     if(fieldInsn.owner.equals(mainClass.getInternalName())) {
                         return true;
                     }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public boolean returnsMutable(MethodInvocation invocation) {
+        ClassNode classNode = globalContext.findClass(invocation.methodOwner());
+        MethodNode methodNode = ASMUtil.findMethod(classNode, invocation.methodName(), invocation.methodDesc());
+
+        if(methodNode.visibleAnnotations != null) {
+            for (AnnotationNode annotation : methodNode.visibleAnnotations) {
+                if (annotation.desc.equals(ReturnMutable.class.descriptorString())) {
+                    return true;
                 }
             }
         }

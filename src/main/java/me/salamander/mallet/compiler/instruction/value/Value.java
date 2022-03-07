@@ -2,6 +2,7 @@ package me.salamander.mallet.compiler.instruction.value;
 
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 
 import java.util.List;
@@ -23,5 +24,9 @@ public interface Value {
 
     default boolean makeImmutableOnAssign() {
         return true;
+    }
+
+    default @Nullable Value trySimplify() {
+        return null;
     }
 }

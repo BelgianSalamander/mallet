@@ -153,7 +153,7 @@ public class UnaryOperation implements Value{
 
                 @Override
                 public String toString() {
-                    return "instanceof " + type.getInternalName();
+                    return "instanceof " + type.getInternalName() + " ";
                 }
             };
         }

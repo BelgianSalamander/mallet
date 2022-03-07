@@ -1,4 +1,4 @@
-package me.salamander.mallet.compiler.tests;
+package me.salamander.mallet.compiler.constant;
 
 import java.util.Map;
 

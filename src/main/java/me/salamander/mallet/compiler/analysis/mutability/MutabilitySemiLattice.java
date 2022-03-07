@@ -89,7 +89,23 @@ public class MutabilitySemiLattice extends SemiLattice<MutabilityValue> {
         for (int i = 0; i < methodCall.getArgs().length; i++) {
             if(mutableParams.contains(i)) {
                 if(methodCall.getArgs()[i].getMutability(value) == Mutability.IMMUTABLE) {
-                    throw new MutatingImmutableValueException("Method call argument is immutable");
+                    StringBuilder msg = new StringBuilder();
+                    msg.append("Method call argument is immutable: ");
+                    msg.append("Method :");
+                    msg.append(methodCall.getInvocation());
+                    msg.append(" Args: [ ");
+                    for (int j = 0; j < methodCall.getArgs().length; j++) {
+                        msg.append(methodCall.getArgs()[j]);
+                        if(j != methodCall.getArgs().length - 1){
+                            msg.append(", ");
+                        }
+                    }
+
+                    msg.append(" ]");
+
+                    msg.append(" Bad Arg: ").append(methodCall.getArgs()[i]);
+
+                    throw new MutatingImmutableValueException(msg.toString());
                 }
             }
         }

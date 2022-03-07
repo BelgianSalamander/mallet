@@ -1,6 +1,9 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
+import java.util.function.Consumer;
 
 public abstract class LabelledASTBlock extends ASTNode {
     private final List<ASTNode> body;
@@ -29,6 +32,34 @@ public abstract class LabelledASTBlock extends ASTNode {
         }
 
         sb.append(indent).append("}\n");
+    }
+
+    @Override
+    public @Nullable ASTNode trySimplify() {
+        boolean changed = false;
+
+        for (int i = 0; i < body.size(); i++) {
+            ASTNode node = body.get(i);
+            ASTNode simplified = node.trySimplify();
+            if (simplified != null) {
+                body.set(i, simplified);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            return this;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public void visitTree(Consumer<ASTNode> consumer) {
+        consumer.accept(this);
+        for (ASTNode node : body) {
+            node.visitTree(consumer);
+        }
     }
 
     protected abstract String getHead();

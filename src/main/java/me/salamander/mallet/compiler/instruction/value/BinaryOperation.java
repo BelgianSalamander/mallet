@@ -2,6 +2,7 @@ package me.salamander.mallet.compiler.instruction.value;
 
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 
 import java.util.ArrayList;
@@ -96,18 +97,202 @@ public class BinaryOperation implements Value {
         return Mutability.IMMUTABLE;
     }
 
+    @Override
+    public @Nullable Value trySimplify() {
+        boolean changed = false;
+
+        Value leftSimplified = left.trySimplify();
+        if(leftSimplified != null){
+            left = leftSimplified;
+            changed = true;
+        }
+
+        Value rightSimplified = right.trySimplify();
+        if(rightSimplified != null){
+            right = rightSimplified;
+            changed = true;
+        }
+
+        if (this.op instanceof ComparisonOp compareOp) {
+            if (left instanceof BinaryOperation leftBin && leftBin.op == Op.CMP && right instanceof LiteralValue literal && literal.getType() == Type.INT_TYPE && ((int) literal.getValue()) == 0) {
+                return new BinaryOperation(leftBin.left, leftBin.right, compareOp);
+            } else if (right instanceof BinaryOperation rightBin && rightBin.op == Op.CMP && left instanceof LiteralValue literal2 && literal2.getType() == Type.INT_TYPE && ((int) literal2.getValue()) == 0) {
+                return new BinaryOperation(rightBin.left, rightBin.right, compareOp);
+            }
+        }
+
+        if(changed){
+            checkTypes();
+            return this;
+        } else {
+            return null;
+        }
+    }
+
     public interface Op{
-        Op ADD = new NumberOp("+");
-        Op SUB = new NumberOp("-");
-        Op MUL = new NumberOp("*");
-        Op DIV = new NumberOp("/");
-        Op REM = new NumberOp("%");
-        Op AND = new NumberOp("&");
-        Op OR = new NumberOp("|");
-        Op XOR = new NumberOp("^");
-        Op SHL = new NumberOp("<<");
-        Op SHR = new NumberOp(">>");
-        Op USHR = new NumberOp(">>>");
+        Op ADD = new NumberOp("+") {
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if(leftNum instanceof Double || rightNum instanceof Double){
+                    return leftNum.doubleValue() + rightNum.doubleValue();
+                } else if (leftNum instanceof Float || rightNum instanceof Float){
+                    return leftNum.floatValue() + rightNum.floatValue();
+                } else if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() + rightNum.longValue();
+                } else {
+                    return leftNum.intValue() + rightNum.intValue();
+                }
+            }
+        };
+        Op SUB = new NumberOp("-"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if(leftNum instanceof Double || rightNum instanceof Double){
+                    return leftNum.doubleValue() - rightNum.doubleValue();
+                } else if (leftNum instanceof Float || rightNum instanceof Float){
+                    return leftNum.floatValue() - rightNum.floatValue();
+                } else if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() - rightNum.longValue();
+                } else {
+                    return leftNum.intValue() - rightNum.intValue();
+                }
+            }
+        };
+        Op MUL = new NumberOp("*") {
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if(leftNum instanceof Double || rightNum instanceof Double){
+                    return leftNum.doubleValue() * rightNum.doubleValue();
+                } else if (leftNum instanceof Float || rightNum instanceof Float){
+                    return leftNum.floatValue() * rightNum.floatValue();
+                } else if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() * rightNum.longValue();
+                } else {
+                    return leftNum.intValue() * rightNum.intValue();
+                }
+            }
+        };
+        Op DIV = new NumberOp("/"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if(leftNum instanceof Double || rightNum instanceof Double){
+                    return leftNum.doubleValue() / rightNum.doubleValue();
+                } else if (leftNum instanceof Float || rightNum instanceof Float){
+                    return leftNum.floatValue() / rightNum.floatValue();
+                } else if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() / rightNum.longValue();
+                } else {
+                    return leftNum.intValue() / rightNum.intValue();
+                }
+            }
+        };
+        Op REM = new NumberOp("%"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if(leftNum instanceof Double || rightNum instanceof Double){
+                    return leftNum.doubleValue() % rightNum.doubleValue();
+                } else if (leftNum instanceof Float || rightNum instanceof Float){
+                    return leftNum.floatValue() % rightNum.floatValue();
+                } else if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() % rightNum.longValue();
+                } else {
+                    return leftNum.intValue() % rightNum.intValue();
+                }
+            }
+        };
+        Op AND = new NumberOp("&"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() & rightNum.longValue();
+                } else {
+                    return leftNum.intValue() & rightNum.intValue();
+                }
+            }
+        };
+        Op OR = new NumberOp("|"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() | rightNum.longValue();
+                } else {
+                    return leftNum.intValue() | rightNum.intValue();
+                }
+            }
+        };
+        Op XOR = new NumberOp("^"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() ^ rightNum.longValue();
+                } else {
+                    return leftNum.intValue() ^ rightNum.intValue();
+                }
+            }
+        };
+        Op SHL = new NumberOp("<<"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() << rightNum.longValue();
+                } else {
+                    return leftNum.intValue() << rightNum.intValue();
+                }
+            }
+        };
+        Op SHR = new NumberOp(">>"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() >> rightNum.longValue();
+                } else {
+                    return leftNum.intValue() >> rightNum.intValue();
+                }
+            }
+        };
+        Op USHR = new NumberOp(">>>") {
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long){
+                    return leftNum.longValue() >>> rightNum.longValue();
+                } else {
+                    return leftNum.intValue() >>> rightNum.intValue();
+                }
+            }
+        };
 
         Op CMP = new Op() {
             @Override
@@ -121,17 +306,88 @@ public class BinaryOperation implements Value {
             }
 
             @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                if (leftNum instanceof Long || rightNum instanceof Long) {
+                    return Long.compare(leftNum.longValue(), rightNum.longValue());
+                } else if (leftNum instanceof Float || rightNum instanceof Float) {
+                    return Float.compare(leftNum.floatValue(), rightNum.floatValue());
+                } else if (leftNum instanceof Double || rightNum instanceof Double) {
+                    return Double.compare(leftNum.doubleValue(), rightNum.doubleValue());
+                } else {
+                    return Integer.compare(leftNum.intValue(), rightNum.intValue());
+                }
+            }
+
+            @Override
             public String toString() {
                 return "cmp";
             }
         };
 
-        Op LT = new ComparisonOp("<");
-        Op LE = new ComparisonOp("<=");
-        Op GT = new ComparisonOp(">");
-        Op GE = new ComparisonOp(">=");
-        Op EQ = new ComparisonOp("==");
-        Op NE = new ComparisonOp("!=");
+        Op LT = new ComparisonOp("<"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                return leftNum.doubleValue() < rightNum.doubleValue();
+            }
+        };
+        Op LE = new ComparisonOp("<="){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                return leftNum.doubleValue() <= rightNum.doubleValue();
+            }
+        };
+        Op GT = new ComparisonOp(">"){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                return leftNum.doubleValue() > rightNum.doubleValue();
+            }
+        };
+        Op GE = new ComparisonOp(">="){
+            @Override
+            public Object apply(Object left, Object right) {
+                Number leftNum = (Number) left;
+                Number rightNum = (Number) right;
+
+                return leftNum.doubleValue() >= rightNum.doubleValue();
+            }
+        };
+        Op EQ = new ComparisonOp("=="){
+            @Override
+            public Object apply(Object left, Object right) {
+                return left.equals(right);
+            }
+        };
+        Op NE = new ComparisonOp("!="){
+            @Override
+            public Object apply(Object left, Object right) {
+                return !left.equals(right);
+            }
+        };
+
+        Op BOOLEAN_AND = new BooleanOp("&&"){
+            @Override
+            public Object apply(Object left, Object right) {
+                return ((Boolean) left) && ((Boolean) right);
+            }
+        };
+        Op BOOLEAN_OR = new BooleanOp("||"){
+            @Override
+            public Object apply(Object left, Object right) {
+                return ((Boolean) left) || ((Boolean) right);
+            }
+        };
 
         default boolean checkTypes(Type left, Type right){
             return left.equals(right);
@@ -140,9 +396,11 @@ public class BinaryOperation implements Value {
         default Type getResultingType(Type left, Type right){
             return left;
         }
+
+        Object apply(Object left, Object right);
     }
 
-    private static class NumberOp implements Op{
+    private abstract static class NumberOp implements Op{
         private final String name;
 
         public NumberOp(String name){
@@ -165,7 +423,7 @@ public class BinaryOperation implements Value {
         }
     }
 
-    private static class ComparisonOp implements Op{
+    private abstract static class ComparisonOp implements Op{
         private final String name;
 
         public ComparisonOp(String name){
@@ -175,6 +433,29 @@ public class BinaryOperation implements Value {
         @Override
         public boolean checkTypes(Type left, Type right) {
             return left.equals(right);
+        }
+
+        @Override
+        public Type getResultingType(Type left, Type right) {
+            return Type.BOOLEAN_TYPE;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private abstract static class BooleanOp implements Op{
+        private final String name;
+
+        public BooleanOp(String name){
+            this.name = name;
+        }
+
+        @Override
+        public boolean checkTypes(Type left, Type right) {
+            return left.equals(Type.BOOLEAN_TYPE) && right.equals(Type.BOOLEAN_TYPE);
         }
 
         @Override

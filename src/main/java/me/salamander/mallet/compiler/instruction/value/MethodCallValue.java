@@ -78,7 +78,7 @@ public class MethodCallValue implements Value {
 
     @Override
     public Mutability getMutability(MutabilityValue varMutability) {
-        return Mutability.IMMUTABLE;
+        return shaderCompiler.returnsMutable(methodCall.getInvocation()) ? Mutability.PASSIVE_MUTABLE : Mutability.IMMUTABLE;
     }
 
     @Override

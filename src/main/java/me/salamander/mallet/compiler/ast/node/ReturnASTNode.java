@@ -1,7 +1,11 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class ReturnASTNode extends ASTNode{
     private final @Nullable Value returnValue;
@@ -23,5 +27,15 @@ public class ReturnASTNode extends ASTNode{
         }
 
         sb.append(";\n");
+    }
+
+    @Override
+    public void visitTree(Consumer<ASTNode> consumer) {
+        consumer.accept(this);
+    }
+
+    @Override
+    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+        return new ReturnASTNode(returnValue == null ? null : valueCopier.apply(returnValue));
     }
 }

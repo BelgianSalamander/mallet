@@ -1,13 +1,19 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.instruction.Conditions;
+import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class IfElseASTNode extends ASTNode {
     private final List<ASTNode> ifTrue;
     private final List<ASTNode> ifFalse;
-    private final Value condition;
+    private Value condition;
 
     public IfElseASTNode(List<ASTNode> ifTrue, List<ASTNode> ifFalse, Value condition) {
         this.ifTrue = ifTrue;
@@ -38,5 +44,67 @@ public class IfElseASTNode extends ASTNode {
             node.print(sb, indent + "  ");
         }
         sb.append(indent).append("}\n");
+    }
+
+    @Override
+    public @Nullable ASTNode trySimplify() {
+        if (this.ifFalse.isEmpty()) {
+            return new IfASTNode(this.ifTrue, this.condition);
+        } else if (this.ifTrue.isEmpty()) {
+            return new IfASTNode(this.ifFalse, Conditions.invert(this.condition));
+        }
+
+        boolean changed = false;
+
+        for (int i = 0; i < this.ifTrue.size(); i++) {
+            ASTNode node = this.ifTrue.get(i);
+            ASTNode simplified = node.trySimplify();
+            if (simplified != null) {
+                this.ifTrue.set(i, simplified);
+                changed = true;
+            }
+        }
+
+        for (int i = 0; i < this.ifFalse.size(); i++) {
+            ASTNode node = this.ifFalse.get(i);
+            ASTNode simplified = node.trySimplify();
+            if (simplified != null) {
+                this.ifFalse.set(i, simplified);
+                changed = true;
+            }
+        }
+
+        Value simplified = this.condition.trySimplify();
+        if (simplified != null) {
+            this.condition = simplified;
+            changed = true;
+        }
+
+        if (changed) {
+            return this;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public void visitTree(Consumer<ASTNode> consumer) {
+        consumer.accept(this);
+
+        for (ASTNode node : this.ifTrue) {
+            node.visitTree(consumer);
+        }
+
+        for (ASTNode node : this.ifFalse) {
+            node.visitTree(consumer);
+        }
+    }
+
+    @Override
+    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+        List<ASTNode> ifTrue = this.ifTrue.stream().map(subCopier).collect(Collectors.toList());
+        List<ASTNode> ifFalse = this.ifFalse.stream().map(subCopier).collect(Collectors.toList());
+
+        return new IfElseASTNode(ifTrue, ifFalse, valueCopier.apply(this.condition));
     }
 }

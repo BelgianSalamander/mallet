@@ -37,9 +37,9 @@ public class AbstractSyntaxTreeMaker {
 
         this.set.print(System.out);
 
-        /*Graph graph = cfg.display();
+        Graph graph = cfg.display();
 
-        Scanner scanner = new Scanner(System.in);
+        /*Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.println("Show ID:");
             int showID = scanner.nextInt();
@@ -57,7 +57,15 @@ public class AbstractSyntaxTreeMaker {
 
         List<ASTNode> ast = this.set.getRoot().makeAST(cfg);
 
-        if (ast.size() == 1) return ast.get(0);
+        if (ast.size() == 1) {
+            ASTNode root = ast.get(0);
+
+            while(root.trySimplify() != null) {
+
+            }
+
+            return root;
+        }
 
         throw new RuntimeException("Multiple AST nodes returned from SET root!");
     }
@@ -136,6 +144,8 @@ public class AbstractSyntaxTreeMaker {
 
     private void makeStatementSequences() {
         makeStatementSequences(this.set.getRoot());
+
+        this.set.print(System.out);
     }
 
     private void makeStatementSequences(SETNode setNode) {
@@ -156,7 +166,7 @@ public class AbstractSyntaxTreeMaker {
     }
 
     private void makeStatementSequences(Set<CFGNode> nodes) {
-        Set<CFGNode> heads = nodes.stream().filter(n -> Collections.disjoint(nodes, n.getPredecessors())).collect(Collectors.toSet());
+        Set<CFGNode> heads = nodes.stream().filter(n -> Collections.disjoint(nodes, n.getPredecessors()) || n.getPredecessors().size() > 1).collect(Collectors.toSet());
 
         //Make sequence for each head
         for (CFGNode head : heads) {
@@ -168,7 +178,7 @@ public class AbstractSyntaxTreeMaker {
                 if(head.getSuccessors().size() != 1) break;
                 head = head.getSuccessors().iterator().next();
 
-                if(!nodes.contains(head)) break;
+                if(!nodes.contains(head) || head.getPredecessors().size() > 1) break;
             }
 
             StatementSequenceSETNode sequenceNode = new StatementSequenceSETNode(this.set, sequence);

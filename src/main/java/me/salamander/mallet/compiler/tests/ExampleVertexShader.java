@@ -2,71 +2,31 @@ package me.salamander.mallet.compiler.tests;
 
 import me.salamander.mallet.annotation.In;
 import me.salamander.mallet.annotation.Out;
-import me.salamander.mallet.annotation.Uniform;
+import me.salamander.mallet.glsltypes.Vec3;
+import me.salamander.mallet.glsltypes.Vec4;
 import me.salamander.mallet.shader.VertexShader;
-import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 public class ExampleVertexShader extends VertexShader {
-    @Uniform
-    private static Matrix4f u_matrix;
+    @In
+    private static Vec3 position;
 
     @In
-    private static Vector3f position;
-
-    @In
-    private static Vector3f color;
-
-    @Out
-    private static Vector4f fragPosition;
+    private static Vec3 color;
 
     @Out
     private static Vector4f fragColor;
 
-    @Out
-    private static Vector4f testVector;
-
-    public static void main(float f){
-        calculatePosition();
-        fragColor = calculateColor(color);
-
-        Vector4f test = copy(fragColor);
-
-        for(int i = 0; i < 10; i++) {
-            if(i == 5 || i == 2) {
-                test.y = i == 2 ? 1.0f : 0.0f;
-                break;
-            }
-
-            test.x++;
-
-            for(int j = 0; j < 10; j++) {
-                if(j == 2) {
-                    continue;
-                }
-
-                test.x -= j + 1;
-            }
-        }
-
-        L:
-        {
-            if (test.x == 0) {
-                testVector = new Vector4f(1.0f, 1.0f, 1.0f, 1.0f);
-                break L;
-            } else {
-                testVector = new Vector4f(2.0f, 1.0f, 0.0f, -1.0f + f);
-            }
-            test.x = 1.0f;
-        }
+    //TODO: Check that main has no GLSL annotations
+    public static void main(Func func){
+        gl_Position = new Vec4(position, 1.0f);
+        Vector3f tintedColor = color.toVector3f();
+        func.run(tintedColor);
+        fragColor = new Vector4f(tintedColor, 1.0f);
     }
 
-    private static Vector4f calculateColor(Vector3f color) {
-        return new Vector4f(color, 1.0f);
-    }
-
-    private static void calculatePosition() {
-        fragPosition = new Vector4f(position, 1.0f).mul(u_matrix);
+    public static interface Func {
+        void run(@Out Vector3f color);
     }
 }

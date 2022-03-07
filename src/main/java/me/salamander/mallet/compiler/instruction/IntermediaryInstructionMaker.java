@@ -509,17 +509,17 @@ public class IntermediaryInstructionMaker {
             case ARRAYLENGTH -> unaryOp(UnaryOperation.Op.ARRAY_LENGTH);
             case ATHROW -> throw new UnsupportedOperationException("ATHROW is not supported");
             case CHECKCAST -> {
-                TypeInsnNode node = (TypeInsnNode) insn;
+                /*TypeInsnNode node = (TypeInsnNode) insn;
                 if(!node.desc.equals(pop().getType().getDescriptor())) {
                     //throw new UnsupportedOperationException("Not implemented yet");
                     System.err.println("IGNORING CHECKCAST. Not Implemented yet");
                 }
 
-                //unaryOp(UnaryOperation.Op.makeCheckCast(Type.getObjectType(((TypeInsnNode) insn).desc)));
+                */
+                unaryOp(UnaryOperation.Op.makeCheckCast(Type.getObjectType(((TypeInsnNode) insn).desc)));
             }
             case INSTANCEOF -> {
-                throw new UnsupportedOperationException("INSTANCEOF is not supported yet");
-                //unaryOp(UnaryOperation.Op.makeInstanceOf(Type.getObjectType(((TypeInsnNode) insn).desc)));
+                unaryOp(UnaryOperation.Op.makeInstanceOf(Type.getObjectType(((TypeInsnNode) insn).desc)));
             }
             case MONITORENTER -> throw new UnsupportedOperationException("MONITORENTER is not supported");
             case MONITOREXIT -> throw new UnsupportedOperationException("MONITOREXIT is not supported");

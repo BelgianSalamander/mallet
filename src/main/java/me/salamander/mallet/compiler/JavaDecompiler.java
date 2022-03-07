@@ -42,6 +42,10 @@ public class JavaDecompiler {
     private final ShaderCompiler shaderCompiler;
     private final AtomicInteger tempVarCounter = new AtomicInteger();
 
+    public MethodNode getMethodNode() {
+        return methodNode;
+    }
+
     public JavaDecompiler(ClassNode classNode, MethodNode methodNode, ShaderCompiler shaderCompiler) {
         this.methodNode = methodNode;
         this.classNode = classNode;
@@ -53,7 +57,7 @@ public class JavaDecompiler {
         }
     }
 
-    public void decompile(){
+    public ASTNode decompile(){
         //Make the intermediate representation
         List<Instruction> instructions = makeIntermediateRepresentation();
         IntermediaryCFG intermediaryCFG = createIntermediaryCFG(instructions);
@@ -64,6 +68,8 @@ public class JavaDecompiler {
         StringBuilder sb = new StringBuilder();
         astRoot.print(sb);
         System.out.println(sb);
+
+        return astRoot;
     }
 
     public int getNextTempVar(){
