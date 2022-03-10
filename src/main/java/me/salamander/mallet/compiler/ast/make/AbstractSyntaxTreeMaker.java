@@ -37,24 +37,6 @@ public class AbstractSyntaxTreeMaker {
 
         this.set.print(System.out);
 
-        Graph graph = cfg.display();
-
-        /*Scanner scanner = new Scanner(System.in);
-        while (true) {
-            System.out.println("Show ID:");
-            int showID = scanner.nextInt();
-
-            if(showID == -1) break;
-
-            for (CFGNode node : cfg) {
-                graph.getNode(node.nodeName()).setAttribute("ui.style", "fill-color: gray;");
-            }
-
-            for (CFGNode node : set.getNode(showID).getBody()) {
-                graph.getNode(node.nodeName()).setAttribute("ui.style", "fill-color: red;");
-            }
-        }*/
-
         List<ASTNode> ast = this.set.getRoot().makeAST(cfg);
 
         if (ast.size() == 1) {

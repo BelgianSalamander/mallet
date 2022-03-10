@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 public abstract class LabelledASTBlock extends ASTNode {
     private final List<ASTNode> body;
     private final String label;
+    private boolean needsLabel = true;
 
     public LabelledASTBlock(String label, List<ASTNode> body) {
         this.label = label;
@@ -20,6 +21,14 @@ public abstract class LabelledASTBlock extends ASTNode {
 
     public List<ASTNode> getBody() {
         return body;
+    }
+
+    public boolean needsLabel() {
+        return needsLabel;
+    }
+
+    public void setNeedsLabel(boolean needsLabel) {
+        this.needsLabel = needsLabel;
     }
 
     @Override

@@ -2,6 +2,8 @@ package me.salamander.mallet.compiler.cfg.instruction.instructions;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.cfg.instruction.CFGNode;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Location;
@@ -54,7 +56,12 @@ public class CFGSwitchInstruction extends CFGSpecialInstruction {
     }
 
     @Override
-    public Instruction copy(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
+    public Instruction visitAndReplace(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
         return new CFGSwitchInstruction(valueCopier.apply(value), this.targets, this.defaultTarget);
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        throw new IllegalStateException("Cannot write GLSL for CFGSwitchInstruction");
     }
 }

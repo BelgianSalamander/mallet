@@ -1,5 +1,6 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.ast.ASTVisitor;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import org.jetbrains.annotations.Nullable;
@@ -9,6 +10,7 @@ import java.util.function.Function;
 
 public class ContinueASTNode extends ASTNode {
     private @Nullable String label;
+    private boolean needsLabel = true;
 
     public ContinueASTNode(@Nullable String label) {
         this.label = label;
@@ -39,7 +41,20 @@ public class ContinueASTNode extends ASTNode {
     }
 
     @Override
-    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+    public ASTNode visitAndReplace(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
         return new ContinueASTNode(label);
+    }
+
+    @Override
+    public void visit(ASTVisitor visitor) {
+        visitor.visitContinue(this);
+    }
+
+    public boolean needsLabel() {
+        return needsLabel;
+    }
+
+    public void setNeedsLabel(boolean needsLabel) {
+        this.needsLabel = needsLabel;
     }
 }

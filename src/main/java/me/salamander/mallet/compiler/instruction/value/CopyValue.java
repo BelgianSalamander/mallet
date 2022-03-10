@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import org.objectweb.asm.Type;
@@ -60,6 +62,11 @@ public class CopyValue implements Value {
     @Override
     public boolean makeImmutableOnAssign() {
         return false;
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        value.writeGLSL(sb, ctx, shaderCompiler);
     }
 
     @Override

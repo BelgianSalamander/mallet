@@ -1,5 +1,6 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.ast.ASTVisitor;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import org.jetbrains.annotations.Nullable;
@@ -59,8 +60,19 @@ public class MethodASTNode extends ASTNode{
     }
 
     @Override
-    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+    public ASTNode visitAndReplace(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
         List<ASTNode> newBody = body.stream().map(subCopier).collect(java.util.stream.Collectors.toList());
         return new MethodASTNode(newBody);
+    }
+
+    @Override
+    public void visit(ASTVisitor visitor) {
+        visitor.enterMethod(this);
+
+        for (ASTNode node : body) {
+            node.visit(visitor);
+        }
+
+        visitor.exitMethod(this);
     }
 }

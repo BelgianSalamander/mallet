@@ -1,12 +1,15 @@
 package me.salamander.mallet.compiler.instruction;
 
+import me.salamander.mallet.compiler.CompiledMethod;
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
+import me.salamander.mallet.compiler.constant.Constant;
 import me.salamander.mallet.compiler.instruction.value.Location;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import me.salamander.mallet.compiler.instruction.value.Variable;
 import me.salamander.mallet.util.MethodCall;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
@@ -42,7 +45,13 @@ public class MethodCallInstruction implements Instruction {
     }
 
     @Override
-    public Instruction copy(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
+    public Instruction visitAndReplace(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
         return new MethodCallInstruction(methodCall.copy(valueCopier));
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        shaderCompiler.callMethod(sb, this.methodCall);
+        sb.append(";\n");
     }
 }

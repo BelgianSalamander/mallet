@@ -12,4 +12,9 @@ public record Vec3(float x, float y, float z) {
     public Vector3f toVector3f() {
         return new Vector3f(x, y, z);
     }
+
+    @Override
+    public String toString() {
+        return "vec3(" + x + ", " + y + ", " + z + ")";
+    }
 }

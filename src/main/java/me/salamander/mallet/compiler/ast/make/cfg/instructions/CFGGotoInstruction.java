@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.ast.make.cfg.instructions;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.ast.make.cfg.CFGNode;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Location;
@@ -29,8 +31,13 @@ public class CFGGotoInstruction extends CFGSpecialInstruction {
     }
 
     @Override
-    public Instruction copy(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
+    public Instruction visitAndReplace(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
         return new CFGGotoInstruction(target);
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        throw new IllegalStateException("Goto instructions should not be written to GLSL");
     }
 
     @Override

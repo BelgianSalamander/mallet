@@ -1,5 +1,6 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.ast.ASTVisitor;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
 
@@ -7,7 +8,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class InstructionASTNode extends ASTNode{
-    private final Instruction instruction;
+    private Instruction instruction;
 
     public InstructionASTNode(Instruction instruction) {
         this.instruction = instruction;
@@ -15,6 +16,10 @@ public class InstructionASTNode extends ASTNode{
 
     public Instruction getInstruction() {
         return instruction;
+    }
+
+    public void setInstruction(Instruction instruction) {
+        this.instruction = instruction;
     }
 
     @Override
@@ -28,7 +33,12 @@ public class InstructionASTNode extends ASTNode{
     }
 
     @Override
-    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+    public ASTNode visitAndReplace(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
         return new InstructionASTNode(instructionCopier.apply(instruction));
+    }
+
+    @Override
+    public void visit(ASTVisitor visitor) {
+        visitor.visitInstruction(this);
     }
 }

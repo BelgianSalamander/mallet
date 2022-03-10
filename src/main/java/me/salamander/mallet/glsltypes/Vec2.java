@@ -11,4 +11,9 @@ public record Vec2(float x, float y) {
     public Vector2f toVector2f() {
         return new Vector2f(x, y);
     }
+
+    @Override
+    public String toString() {
+        return "vec2(" + x + ", " + y + ")";
+    }
 }

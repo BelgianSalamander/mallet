@@ -14,4 +14,9 @@ public record Vec4 (float x, float y, float z, float w) {
     public Vector4f toVector4f() {
         return new Vector4f(x, y, z, w);
     }
+
+    @Override
+    public String toString() {
+        return "vec4(" + x + ", " + y + ", " + z + ", " + w + ")";
+    }
 }

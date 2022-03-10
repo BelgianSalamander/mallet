@@ -54,9 +54,9 @@ public class ASTAnalysis {
             }
 
             if (i < body.size() - 1) {
-                if (!results.out.get(node).equals(results.out.get(body.get(i + 1)))) {
+                if (!results.out.get(node).equals(results.in.get(body.get(i + 1)))) {
                     changed = true;
-                    results.out.put(node, results.out.get(body.get(i + 1)));
+                    results.in.put(body.get(i + 1), results.out.get(node));
                 }
             }
         }

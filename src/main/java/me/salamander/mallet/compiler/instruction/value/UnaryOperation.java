@@ -1,8 +1,12 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
+import me.salamander.mallet.compiler.constant.Constant;
 import me.salamander.mallet.util.ASMUtil;
+import me.salamander.mallet.util.Util;
 import org.objectweb.asm.Type;
 
 import java.util.List;
@@ -81,13 +85,18 @@ public class UnaryOperation implements Value{
         return Mutability.IMMUTABLE;
     }
 
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        op.writeGLSL(sb, arg, ctx, shaderCompiler);
+    }
+
     public interface Op{
         Op NEG = new NumberOp("-");
 
-        Op TO_INT = new NumberConvertOp(Type.INT_TYPE, "(int) ");
-        Op TO_LONG = new NumberConvertOp(Type.LONG_TYPE, "(long) ");
-        Op TO_FLOAT = new NumberConvertOp(Type.FLOAT_TYPE, "(float) ");
-        Op TO_DOUBLE = new NumberConvertOp(Type.DOUBLE_TYPE, "(double) ");
+        Op TO_INT = new NumberConvertOp(Type.INT_TYPE, "int");
+        Op TO_LONG = new NumberConvertOp(Type.LONG_TYPE, "long");
+        Op TO_FLOAT = new NumberConvertOp(Type.FLOAT_TYPE, "float");
+        Op TO_DOUBLE = new NumberConvertOp(Type.DOUBLE_TYPE, "double");
 
         Op ARRAY_LENGTH = new Op() {
             @Override
@@ -98,6 +107,15 @@ public class UnaryOperation implements Value{
             @Override
             public Type getResultingType(Type type) {
                 return Type.INT_TYPE;
+            }
+
+            @Override
+            public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+                if (value instanceof Constant cst) {
+                    sb.append(((Object[]) cst.getValue()).length);
+                } else {
+                    throw new UnsupportedOperationException("Array length must be constant");
+                }
             }
         };
 
@@ -115,51 +133,96 @@ public class UnaryOperation implements Value{
             }
 
             @Override
+            public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+                sb.append("!");
+                value.writeGLSL(sb, context, shaderCompiler);
+            }
+
+            @Override
             public String toString() {
                 return "!";
             }
         };
 
         static Op makeCheckCast(Type type){
-            return new Op() {
-                @Override
-                public boolean checkType(Type type) {
-                    return true;
-                }
-
-                @Override
-                public Type getResultingType(Type t) {
-                    return type;
-                }
-
-                @Override
-                public String toString() {
-                    return "(" + type.getDescriptor() + ")";
-                }
-            };
+            return new CheckCastOp(type);
         }
 
         static Op makeInstanceOf(Type type){
-            return new Op() {
-                @Override
-                public boolean checkType(Type type) {
-                    return true;
-                }
-
-                @Override
-                public Type getResultingType(Type t) {
-                    return Type.BOOLEAN_TYPE;
-                }
-
-                @Override
-                public String toString() {
-                    return "instanceof " + type.getInternalName() + " ";
-                }
-            };
+            return new InstanceofOp(type);
         }
 
         boolean checkType(Type type);
         Type getResultingType(Type type);
+        void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler);
+
+        public class CheckCastOp implements Op {
+            private final Type type;
+
+            public CheckCastOp(Type type) {
+                this.type = type;
+            }
+
+            @Override
+            public boolean checkType(Type type) {
+                return true;
+            }
+
+            @Override
+            public Type getResultingType(Type t) {
+                return type;
+            }
+
+            @Override
+            public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+                sb.append("make_cast_").append(Util.removeSpecial(type.getClassName())).append("(");
+                value.writeGLSL(sb, context, shaderCompiler);
+                sb.append(")");
+            }
+
+            public Type getType() {
+                return type;
+            }
+
+            @Override
+            public String toString() {
+                return "(" + type.getDescriptor() + ")";
+            }
+        }
+
+        public class InstanceofOp implements Op {
+            private final Type type;
+
+            public InstanceofOp(Type type) {
+                this.type = type;
+            }
+
+            public Type getType() {
+                return type;
+            }
+
+            @Override
+            public boolean checkType(Type type) {
+                return true;
+            }
+
+            @Override
+            public Type getResultingType(Type t) {
+                return Type.BOOLEAN_TYPE;
+            }
+
+            @Override
+            public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+                sb.append("instanceof_").append(Util.removeSpecial(type.getClassName())).append("(");
+                value.writeGLSL(sb, context, shaderCompiler);
+                sb.append(")");
+            }
+
+            @Override
+            public String toString() {
+                return "instanceof " + type.getInternalName() + " ";
+            }
+        }
     }
 
     private static class NumberOp implements Op{
@@ -177,6 +240,12 @@ public class UnaryOperation implements Value{
         @Override
         public Type getResultingType(Type type) {
             return type;
+        }
+
+        @Override
+        public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+            sb.append(name);
+            value.writeGLSL(sb, context, shaderCompiler);
         }
 
         @Override
@@ -205,8 +274,16 @@ public class UnaryOperation implements Value{
         }
 
         @Override
+        public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+            sb.append(name);
+            sb.append("(");
+            value.writeGLSL(sb, context, shaderCompiler);
+            sb.append(")");
+        }
+
+        @Override
         public String toString() {
-            return name;
+            return "(" + name + ") ";
         }
     }
 
@@ -228,6 +305,16 @@ public class UnaryOperation implements Value{
         @Override
         public Type getResultingType(Type type) {
             return Type.BOOLEAN_TYPE;
+        }
+
+        @Override
+        public void writeGLSL(StringBuilder sb, Value value, GlobalCompilationContext context, ShaderCompiler shaderCompiler) {
+            if (inverted) {
+                sb.append("!");
+            }
+
+            value.writeGLSL(sb, context, shaderCompiler);
+            sb.append(".is_null"); //TODO: Implement nullability
         }
 
 

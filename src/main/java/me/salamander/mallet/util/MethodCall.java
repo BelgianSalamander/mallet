@@ -1,6 +1,12 @@
 package me.salamander.mallet.util;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import me.salamander.mallet.compiler.MethodInvocationWithConstants;
+import me.salamander.mallet.compiler.constant.Constant;
+import me.salamander.mallet.compiler.instruction.value.LiteralValue;
 import me.salamander.mallet.compiler.instruction.value.Value;
+import org.objectweb.asm.Type;
 
 import java.util.function.Function;
 
@@ -75,5 +81,24 @@ public class MethodCall {
         }
 
         return new MethodCall(invocation, newArgs);
+    }
+
+    public MethodInvocationWithConstants toMethodInvocationWithConstants() {
+        Int2ObjectMap<Object> constantParams = new Int2ObjectOpenHashMap<>();
+        Type[] argTypes = new Type[args.length];
+
+        for(int i = 0; i < args.length; i++) {
+            Value arg = args[i];
+
+            argTypes[i] = arg.getType();
+
+            if (arg instanceof Constant constant) {
+                constantParams.put(i, constant.getValue());
+            } else if (arg instanceof LiteralValue literalValue) {
+                constantParams.put(i, literalValue.getValue());
+            }
+        }
+
+        return new MethodInvocationWithConstants(invocation, argTypes, constantParams);
     }
 }

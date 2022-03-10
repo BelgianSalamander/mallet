@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.constant;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import me.salamander.mallet.compiler.instruction.value.Value;
@@ -12,10 +14,12 @@ import java.util.function.Function;
 public class Constant implements Value {
     private Object value;
     private Value original;
+    private final ShaderCompiler shaderCompiler;
 
-    public Constant(Object value, Value original) {
+    public Constant(Object value, Value original, ShaderCompiler shaderCompiler) {
         this.value = value;
         this.original = original;
+        this.shaderCompiler = shaderCompiler;
     }
 
     public Object getValue() {
@@ -57,12 +61,17 @@ public class Constant implements Value {
 
     @Override
     public Value copyValue(Function<Value, Value> innerValueCopier) {
-        throw new UnsupportedOperationException();
+        return new Constant(value, innerValueCopier.apply(original), shaderCompiler);
     }
 
     @Override
     public Mutability getMutability(MutabilityValue varMutability) {
         return Mutability.IMMUTABLE;
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        sb.append(this.shaderCompiler.getConstantNames().get(value));
     }
 
     @Override

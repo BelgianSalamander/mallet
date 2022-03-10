@@ -1,5 +1,6 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.ast.ASTVisitor;
 import me.salamander.mallet.compiler.instruction.Conditions;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
@@ -68,7 +69,18 @@ public class LoopASTNode extends LabelledASTBlock {
     }
 
     @Override
-    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+    public ASTNode visitAndReplace(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
         return new LoopASTNode(getLabel(), getBody().stream().map(subCopier).toList(), valueCopier.apply(condition));
+    }
+
+    @Override
+    public void visit(ASTVisitor visitor) {
+        visitor.enterLoop(this);
+
+        for (ASTNode node : getBody()) {
+            node.visit(visitor);
+        }
+
+        visitor.exitLoop(this);
     }
 }

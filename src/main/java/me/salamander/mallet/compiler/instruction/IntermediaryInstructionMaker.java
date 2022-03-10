@@ -125,7 +125,7 @@ public class IntermediaryInstructionMaker {
                 Value value = pop();
                 addInstruction(
                         new AssignmentInstruction(
-                                getLocal(index),
+                                new Variable(value.getType(), index, VariableType.LOCAL),
                                 value
                         )
                 );
@@ -355,7 +355,8 @@ public class IntermediaryInstructionMaker {
                                 new StaticField(
                                         Type.getObjectType(node.owner),
                                         node.name,
-                                        type
+                                        type,
+                                        decompiler.getShaderCompiler()
                                 )
                         )
                 );
@@ -368,7 +369,8 @@ public class IntermediaryInstructionMaker {
                                 new StaticField(
                                         Type.getObjectType(node.owner),
                                         node.name,
-                                        type
+                                        type,
+                                        decompiler.getShaderCompiler()
                                 ),
                                 pop()
                         )

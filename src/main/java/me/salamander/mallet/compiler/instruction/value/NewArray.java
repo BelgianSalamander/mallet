@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import org.objectweb.asm.Type;
@@ -84,5 +86,10 @@ public class NewArray implements Value {
     @Override
     public Mutability getMutability(MutabilityValue varMutability) {
         return Mutability.MUTABLE;
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        throw new UnsupportedOperationException();
     }
 }

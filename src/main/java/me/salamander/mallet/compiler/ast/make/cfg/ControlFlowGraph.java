@@ -187,7 +187,12 @@ public class ControlFlowGraph implements Iterable<CFGNode> {
         }
 
         //Find start node. It should be the only instruction with no predecessors but with successors. (Label instructions will now have no predecessors or successors)
-        List<CFGNode> potentialStartNodes = this.instructionToNode.values().stream().filter(n -> n.getPredecessors().size() == 0 && n.getSuccessors().size() > 0).toList();
+        List<CFGNode> potentialStartNodes;
+        potentialStartNodes = this.instructionToNode.values().stream().filter(n -> n.getPredecessors().size() == 0 && n.getSuccessors().size() > 0).toList();
+
+        if (potentialStartNodes.size() == 0) {
+            potentialStartNodes = this.instructionToNode.values().stream().filter(n -> n.getPredecessors().size() == 0 && (n.getInstruction() instanceof ReturnInstruction)).toList();
+        }
 
         if (potentialStartNodes.size() == 0) {
             throw new IllegalStateException("No start node found");

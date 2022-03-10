@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.instruction;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.instruction.value.Location;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import me.salamander.mallet.compiler.instruction.value.Variable;
@@ -39,8 +41,18 @@ public class ReturnInstruction implements Instruction {
     }
 
     @Override
-    public Instruction copy(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
+    public Instruction visitAndReplace(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier) {
         return new ReturnInstruction(value != null ? valueCopier.apply(value) : null);
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        sb.append("return");
+        if(value != null) {
+            sb.append(" ");
+            value.writeGLSL(sb, ctx, shaderCompiler);
+        }
+        sb.append(";\n");
     }
 
     @Override

@@ -14,7 +14,12 @@ public class Main {
         Vector3f tint = new Vector3f(1f, 0.5f, 0.5f);
 
         System.out.println(compiler.compile(
-                (ExampleVertexShader.Func) (col) -> col.mul(tint)
+                new ExampleVertexShader.Func() {
+                    @Override
+                    public void run(Vector3f color) {
+                        color.mul(tint);
+                    }
+                }
         ));
 
         System.out.println("Made GLSL!");

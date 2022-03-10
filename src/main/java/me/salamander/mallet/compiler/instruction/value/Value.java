@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import org.jetbrains.annotations.Nullable;
@@ -29,4 +31,6 @@ public interface Value {
     default @Nullable Value trySimplify() {
         return null;
     }
+
+    void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler);
 }

@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import me.salamander.mallet.util.ASMUtil;
@@ -55,7 +57,23 @@ public class ArrayElement implements Location, Value {
     }
 
     @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        array.writeGLSL(sb, ctx, shaderCompiler);
+        sb.append("[");
+        index.writeGLSL(sb, ctx, shaderCompiler);
+        sb.append("]");
+    }
+
+    @Override
     public boolean canSet(MutabilityValue value) {
         return array.getMutability(value) != Mutability.IMMUTABLE;
+    }
+
+    public Value getArray() {
+        return array;
+    }
+
+    public Value getIndex() {
+        return index;
     }
 }

@@ -1,5 +1,6 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
 import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
@@ -79,6 +80,11 @@ public class MethodCallValue implements Value {
     @Override
     public Mutability getMutability(MutabilityValue varMutability) {
         return shaderCompiler.returnsMutable(methodCall.getInvocation()) ? Mutability.PASSIVE_MUTABLE : Mutability.IMMUTABLE;
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        shaderCompiler.callMethod(sb, methodCall);
     }
 
     @Override

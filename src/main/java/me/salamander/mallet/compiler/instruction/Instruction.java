@@ -2,6 +2,8 @@ package me.salamander.mallet.compiler.instruction;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.instruction.value.Location;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import me.salamander.mallet.compiler.instruction.value.Variable;
@@ -23,7 +25,7 @@ public interface Instruction {
 
     List<Variable> usedVariables();
 
-    Instruction copy(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier);
+    Instruction visitAndReplace(Function<Value, Value> valueCopier, Function<Location, Location> locationCopier);
 
     static void replaceTargetLabel(Instruction instruction, Label oldLabel, Label newLabel){
         if(instruction instanceof GotoInstruction goto_){
@@ -46,4 +48,6 @@ public interface Instruction {
             }
         }
     }
+
+    void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler);
 }

@@ -1,5 +1,7 @@
 package me.salamander.mallet.compiler.instruction.value;
 
+import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import org.jetbrains.annotations.Nullable;
@@ -127,6 +129,11 @@ public class BinaryOperation implements Value {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+        op.writeGLSL(sb, left, right, ctx, shaderCompiler);
     }
 
     public interface Op{
@@ -325,6 +332,15 @@ public class BinaryOperation implements Value {
             public String toString() {
                 return "cmp";
             }
+
+            @Override
+            public void writeGLSL(StringBuilder sb, Value left, Value right, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+                sb.append("cmp(");
+                left.writeGLSL(sb, ctx, shaderCompiler);
+                sb.append(", ");
+                right.writeGLSL(sb, ctx, shaderCompiler);
+                sb.append(")");
+            }
         };
 
         Op LT = new ComparisonOp("<"){
@@ -398,6 +414,8 @@ public class BinaryOperation implements Value {
         }
 
         Object apply(Object left, Object right);
+
+        void writeGLSL(StringBuilder sb, Value left, Value right, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler);
     }
 
     private abstract static class NumberOp implements Op{
@@ -420,6 +438,13 @@ public class BinaryOperation implements Value {
         @Override
         public String toString() {
             return name;
+        }
+
+        @Override
+        public void writeGLSL(StringBuilder sb, Value left, Value right, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+            left.writeGLSL(sb, ctx, shaderCompiler);
+            sb.append(" ").append(name).append(" ");
+            right.writeGLSL(sb, ctx, shaderCompiler);
         }
     }
 
@@ -444,6 +469,13 @@ public class BinaryOperation implements Value {
         public String toString() {
             return name;
         }
+
+        @Override
+        public void writeGLSL(StringBuilder sb, Value left, Value right, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+            left.writeGLSL(sb, ctx, shaderCompiler);
+            sb.append(" ").append(name).append(" ");
+            right.writeGLSL(sb, ctx, shaderCompiler);
+        }
     }
 
     private abstract static class BooleanOp implements Op{
@@ -466,6 +498,13 @@ public class BinaryOperation implements Value {
         @Override
         public String toString() {
             return name;
+        }
+
+        @Override
+        public void writeGLSL(StringBuilder sb, Value left, Value right, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
+            left.writeGLSL(sb, ctx, shaderCompiler);
+            sb.append(" ").append(name).append(" ");
+            right.writeGLSL(sb, ctx, shaderCompiler);
         }
     }
 }

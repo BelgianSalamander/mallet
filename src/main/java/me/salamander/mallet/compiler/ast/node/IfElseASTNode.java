@@ -1,5 +1,6 @@
 package me.salamander.mallet.compiler.ast.node;
 
+import me.salamander.mallet.compiler.ast.ASTVisitor;
 import me.salamander.mallet.compiler.instruction.Conditions;
 import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.value.Value;
@@ -101,10 +102,27 @@ public class IfElseASTNode extends ASTNode {
     }
 
     @Override
-    public ASTNode copy(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
+    public ASTNode visitAndReplace(Function<ASTNode, ASTNode> subCopier, Function<Instruction, Instruction> instructionCopier, Function<Value, Value> valueCopier) {
         List<ASTNode> ifTrue = this.ifTrue.stream().map(subCopier).collect(Collectors.toList());
         List<ASTNode> ifFalse = this.ifFalse.stream().map(subCopier).collect(Collectors.toList());
 
         return new IfElseASTNode(ifTrue, ifFalse, valueCopier.apply(this.condition));
+    }
+
+    @Override
+    public void visit(ASTVisitor visitor) {
+        visitor.enterIfElseTrueBody(this);
+
+        for (ASTNode node : this.ifTrue) {
+            node.visit(visitor);
+        }
+
+        visitor.enterIfElseFalseBody(this);
+
+        for (ASTNode node : this.ifFalse) {
+            node.visit(visitor);
+        }
+
+        visitor.exitIfElse(this);
     }
 }

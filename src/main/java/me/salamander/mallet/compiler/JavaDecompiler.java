@@ -9,11 +9,11 @@ import me.salamander.mallet.compiler.analysis.mutability.MutabilitySemiLattice;
 import me.salamander.mallet.compiler.analysis.usage.PossibleValuesTracker;
 import me.salamander.mallet.compiler.analysis.valuetrack.ValueTrackValue;
 import me.salamander.mallet.compiler.analysis.valuetrack.ValueTracker;
+import me.salamander.mallet.compiler.ast.ASTVisitor;
+import me.salamander.mallet.compiler.ast.AbstractASTVisitor;
 import me.salamander.mallet.compiler.ast.make.AbstractSyntaxTreeMaker;
-import me.salamander.mallet.compiler.ast.make.cfg.ControlFlowGraph;
-import me.salamander.mallet.compiler.ast.node.ASTNode;
+import me.salamander.mallet.compiler.ast.node.*;
 import me.salamander.mallet.compiler.cfg.BasicBlock;
-import me.salamander.mallet.compiler.cfg.instruction.InstructionCFG;
 import me.salamander.mallet.compiler.cfg.IntermediaryCFG;
 import me.salamander.mallet.compiler.instruction.AssignmentInstruction;
 import me.salamander.mallet.compiler.instruction.Instruction;
@@ -64,12 +64,77 @@ public class JavaDecompiler {
 
         AbstractSyntaxTreeMaker astMaker = new AbstractSyntaxTreeMaker(intermediaryCFG);
         ASTNode astRoot = astMaker.make();
+        removeUnneededLabels(astRoot);
+        //TODO: Remove all labels (GLSL doesn't support labels)
 
         StringBuilder sb = new StringBuilder();
         astRoot.print(sb);
         System.out.println(sb);
 
         return astRoot;
+    }
+
+    private void removeUnneededLabels(ASTNode astRoot) {
+        Stack<String> currBreakTarget = new Stack<>();
+        Stack<String> currContinueTarget = new Stack<>();
+
+        Set<String> keepBlockLabel = new HashSet<>();
+
+        astRoot.visit(new AbstractASTVisitor() {
+            @Override
+            public void visitBreak(BreakASTNode node) {
+                if (!currBreakTarget.peek().equals(node.getLabel())) {
+                    keepBlockLabel.add(node.getLabel());
+                    node.setNeedsLabel(true);
+                } else {
+                    node.setNeedsLabel(false);
+                }
+            }
+
+            @Override
+            public void visitContinue(ContinueASTNode node) {
+                if (!currContinueTarget.peek().equals(node.getLabel())) {
+                    keepBlockLabel.add(node.getLabel());
+                    node.setNeedsLabel(true);
+                } else {
+                    node.setNeedsLabel(false);
+                }
+            }
+
+            @Override
+            public void enterLoop(LoopASTNode node) {
+                currBreakTarget.push(node.getLabel());
+                currContinueTarget.push(node.getLabel());
+            }
+
+            @Override
+            public void exitLoop(LoopASTNode node) {
+                currBreakTarget.pop();
+                currContinueTarget.pop();
+
+                if (keepBlockLabel.contains(node.getLabel())) {
+                    node.setNeedsLabel(true);
+                } else {
+                    node.setNeedsLabel(false);
+                }
+            }
+
+            @Override
+            public void enterLabelledBlock(LabelledBlockASTNode node) {
+                currBreakTarget.push(node.getLabel());
+            }
+
+            @Override
+            public void exitLabelledBlock(LabelledBlockASTNode node) {
+                currBreakTarget.pop();
+
+                if (keepBlockLabel.contains(node.getLabel())) {
+                    node.setNeedsLabel(true);
+                } else {
+                    node.setNeedsLabel(false);
+                }
+            }
+        });
     }
 
     public int getNextTempVar(){
@@ -199,7 +264,7 @@ public class JavaDecompiler {
 
                 ValueCopier locationCopier = new ValueCopier(out);
 
-                newInstructions.add(instruction.copy(
+                newInstructions.add(instruction.visitAndReplace(
                         new ValueCopier(in),
                         loc -> (Location) loc.copyValue(locationCopier)
                 ));
