@@ -2,10 +2,10 @@ package me.salamander.mallet.util;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import me.salamander.mallet.compiler.MethodInvocationWithConstants;
-import me.salamander.mallet.compiler.constant.Constant;
-import me.salamander.mallet.compiler.instruction.value.LiteralValue;
-import me.salamander.mallet.compiler.instruction.value.Value;
+import me.salamander.mallet.shaders.compiler.MethodInvocationWithConstants;
+import me.salamander.mallet.shaders.compiler.constant.Constant;
+import me.salamander.mallet.shaders.compiler.instruction.value.LiteralValue;
+import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import org.objectweb.asm.Type;
 
 import java.util.function.Function;

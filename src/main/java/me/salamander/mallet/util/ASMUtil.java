@@ -1,11 +1,19 @@
 package me.salamander.mallet.util;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import org.lwjgl.opengl.GL45;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 public class ASMUtil {
+    private static final Int2ObjectMap<String> glEnumMap = new Int2ObjectOpenHashMap<>();
+
     public static Type getSingleType(Type arrayType){
         if(arrayType.getSort() != Type.ARRAY){
             throw new IllegalArgumentException("Type is not an array type");
@@ -31,5 +39,19 @@ public class ASMUtil {
 
     public static boolean isPrimitive(Type type){
         return type.getSort() >= Type.BOOLEAN && type.getSort() <= Type.DOUBLE;
+    }
+
+    static {
+        Class<?> clazz = GL45.class;
+
+        try {
+            for (Field field : clazz.getFields()) {
+                if (field.getType() == int.class && Modifier.isStatic(field.getModifiers())) {
+                    glEnumMap.put((int) field.get(null), field.getName());
+                }
+            }
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -1,6 +1,6 @@
 package me.salamander.mallet.util;
 
-import me.salamander.mallet.shader.Shader;
+import me.salamander.mallet.shaders.shader.Shader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.MethodInsnNode;
