@@ -1,4 +1,4 @@
 package me.salamander.mallet.shader;
 
-public abstract class FragmentShader extends Shader{
+public abstract non-sealed class FragmentShader extends Shader{
 }

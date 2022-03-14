@@ -1,11 +1,15 @@
 package me.salamander.mallet.compiler.constant;
 
 import me.salamander.mallet.compiler.GlobalCompilationContext;
+import me.salamander.mallet.compiler.PrimitiveConstant;
 import me.salamander.mallet.compiler.ShaderCompiler;
 import me.salamander.mallet.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import me.salamander.mallet.compiler.instruction.value.Variable;
+import me.salamander.mallet.compiler.type.MalletType;
+import me.salamander.mallet.util.ASMUtil;
+import me.salamander.mallet.util.Util;
 import org.objectweb.asm.Type;
 
 import java.util.List;
@@ -71,7 +75,22 @@ public class Constant implements Value {
 
     @Override
     public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
-        sb.append(this.shaderCompiler.getConstantNames().get(value));
+        String varName = this.shaderCompiler.getConstantNames().get(toPrimitiveConstant());
+
+        if (varName == null) {
+            MalletType type = ctx.getType(getType());
+
+            type.make(sb, value, ctx);
+        } else {
+            sb.append(varName);
+        }
+    }
+
+    private PrimitiveConstant toPrimitiveConstant() {
+        return new PrimitiveConstant(
+                this.value,
+                ASMUtil.isPrimitive(this.getType())
+        );
     }
 
     @Override

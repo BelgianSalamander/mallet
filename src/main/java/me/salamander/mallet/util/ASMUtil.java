@@ -28,4 +28,8 @@ public class ASMUtil {
     public static boolean isStatic(int access) {
         return (access & Opcodes.ACC_STATIC) != 0;
     }
+
+    public static boolean isPrimitive(Type type){
+        return type.getSort() >= Type.BOOLEAN && type.getSort() <= Type.DOUBLE;
+    }
 }

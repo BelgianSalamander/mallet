@@ -10,6 +10,7 @@ import me.salamander.mallet.compiler.instruction.value.MethodCallValue;
 import me.salamander.mallet.compiler.instruction.value.Value;
 import me.salamander.mallet.compiler.instruction.value.Variable;
 import me.salamander.mallet.compiler.instruction.value.VariableType;
+import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.MethodCall;
 import me.salamander.mallet.util.MethodInvocation;
 import org.objectweb.asm.Type;
@@ -53,7 +54,7 @@ public class MutabilitySemiLattice extends SemiLattice<MutabilityValue> {
         if(instruction instanceof MethodCallInstruction methodCallInstruction) {
             checkMethodCall(methodCallInstruction.getMethodCall(), value);
         }else if(instruction instanceof AssignmentInstruction assignment) {
-            if(!assignment.getLocation().canSet(value)){
+            if(!ASMUtil.isPrimitive(assignment.getLocation().getType()) && !assignment.getLocation().canSet(value)){
                 throw new MutatingImmutableValueException("Assignment location is immutable");
             }
 

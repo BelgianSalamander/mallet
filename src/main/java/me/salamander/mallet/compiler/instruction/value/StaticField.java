@@ -88,11 +88,7 @@ public class StaticField implements Location, Value {
 
     @Override
     public void writeGLSL(StringBuilder sb, GlobalCompilationContext ctx, ShaderCompiler shaderCompiler) {
-        if (this.shaderCompiler.getGlobalState().contains(this)) {
-            sb.append(fieldName);
-        } else {
-            throw new RuntimeException("Trying to access a static field that is not a shader global");
-        }
+        shaderCompiler.getStatic(sb, this);
     }
 
     @Override

@@ -65,7 +65,7 @@ public class GlobalCompilationContext {
         sb.append("var_");
         sb.append(variable.getIndex());
         sb.append("_");
-        sb.append(variable.getType().getClassName());
+        sb.append(getType(variable.getType()).getName());
 
         return Util.removeSpecial(sb.toString());
     }
@@ -83,6 +83,8 @@ public class GlobalCompilationContext {
         types.put(BasicType.VEC2.getJavaType(), BasicType.VEC2);
         types.put(BasicType.VEC3.getJavaType(), BasicType.VEC3);
         types.put(BasicType.VEC4.getJavaType(), BasicType.VEC4);
+
+        types.put(BasicType.VEC3I.getJavaType(), BasicType.VEC3I);
     }
 
     public MalletType getType(Type type) {

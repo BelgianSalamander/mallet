@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import me.salamander.mallet.annotation.*;
+import me.salamander.mallet.annotation.internal.ShaderInput;
 import me.salamander.mallet.compiler.analysis.defined.DefinedSemilattice;
 import me.salamander.mallet.compiler.analysis.defined.DefinedValue;
 import me.salamander.mallet.compiler.ast.node.ASTNode;
@@ -21,16 +22,17 @@ import me.salamander.mallet.compiler.instruction.Instruction;
 import me.salamander.mallet.compiler.instruction.MethodCallInstruction;
 import me.salamander.mallet.compiler.instruction.value.*;
 import me.salamander.mallet.compiler.type.MalletType;
-import me.salamander.mallet.glsltypes.Vec4;
-import me.salamander.mallet.shader.VertexShader;
+import me.salamander.mallet.shader.Shader;
 import me.salamander.mallet.util.*;
 import org.joml.*;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ShaderCompiler {
     //Placeholder hack until proper type possibility detection
@@ -45,6 +47,10 @@ public class ShaderCompiler {
     private final Set<PrimitiveConstant> constants = new HashSet<>();
     private final Set<PrimitiveConstant> needFullConstants = new HashSet<>();
     private final Object2ObjectMap<PrimitiveConstant, String> constantNames = new Object2ObjectOpenHashMap<>();
+    private final List<StaticField> buffers = new ArrayList<>();
+
+    private final Map<MethodInvocation, ASTNode> decompiledMethods = new HashMap<>();
+    private final Map<MethodInvocationWithConstants, ASTNode> inlinedConstants = new HashMap<>();
 
     public ShaderCompiler(GlobalCompilationContext globalContext, Type mainClass) {
         this.globalContext = globalContext;
@@ -95,6 +101,7 @@ public class ShaderCompiler {
             gatherUsedTypes(usedTypes, compiledMethod);
         }
         usedTypes.removeIf(Objects::isNull);
+        usedTypes = usedTypes.stream().map(t -> t.getSort() == Type.ARRAY ? t.getElementType() : t).collect(Collectors.toSet());
 
         for (Type type : usedTypes) {
             System.out.println("Used type: " + type);
@@ -104,6 +111,8 @@ public class ShaderCompiler {
         glsl.append("#version 450 core\n\n");
 
         defineTypes(glsl, usedTypes);
+
+        makeShaderIO(glsl);
 
         //Define constants
         glsl.append("\n");
@@ -115,7 +124,7 @@ public class ShaderCompiler {
 
             Type type = constant.getType();
             MalletType malletType = globalContext.getType(type);
-            malletType.make(glsl, constant, globalContext);
+            malletType.make(glsl, constant.obj(), globalContext);
             glsl.append(";\n");
         }
         glsl.append("\n");
@@ -149,50 +158,148 @@ public class ShaderCompiler {
             boolean isOutput = staticField.hasAnnotation(Out.class);
             boolean isUniform = staticField.hasAnnotation(Uniform.class);
             boolean isBuffer = staticField.hasAnnotation(Buffer.class);
+
+            //Make sure only one of these annotations is present
+            int numAnnotations = 0;
+            if (isInput) numAnnotations++;
+            if (isOutput) numAnnotations++;
+            if (isUniform) numAnnotations++;
+            if (isBuffer) numAnnotations++;
+
+            if (numAnnotations > 1) {
+                throw new RuntimeException("Only one of the input type annotations can be present on a field");
+            }
+
+            if (isInput) {
+                shaderVertexInputs.add(staticField);
+            } else if (isOutput) {
+                shaderOutputs.add(staticField);
+            } else if (isUniform) {
+                shaderUniforms.add(staticField);
+            } else if (isBuffer) {
+                shaderBuffers.add(staticField);
+            }
+        }
+
+        //Uniforms
+        for (StaticField staticField : shaderUniforms) {
+            makeUniform(glsl, staticField);
+        }
+
+        glsl.append("\n");
+
+        //Buffers
+        for (StaticField staticField : shaderBuffers) {
+            makeBuffer(glsl, staticField);
+        }
+    }
+
+    private void makeUniform(StringBuilder glsl, StaticField staticField) {
+        Layout layout = staticField.getAnnotation(Layout.class);
+
+        if (layout == null) {
+            glsl.append("layout(std430) ");
+        } else {
+            MalletAnnotations.writeLayout(glsl, layout, true);
+        }
+
+        glsl.append("uniform ");
+
+        Type type = staticField.getType();
+        Type elementType = type.getSort() == Type.ARRAY ? type.getElementType() : type;
+
+        MalletType malletType = globalContext.getType(elementType);
+
+        glsl.append(malletType.getName());
+        glsl.append(" ");
+        glsl.append(staticField.getFieldName());
+
+        if (type.getSort() == Type.ARRAY) {
+            writeArrayDimensions(glsl, staticField, type);
+        }
+
+        glsl.append(" = ");
+        malletType.make(glsl, staticField.getValue(), globalContext);
+        glsl.append(";\n");
+    }
+
+    private void makeBuffer(StringBuilder glsl, StaticField staticField) {
+        Layout layout = staticField.getAnnotation(Layout.class);
+
+        int id = buffers.size();
+        buffers.add(staticField);
+
+        if (layout == null) {
+            glsl.append("layout(std430) ");
+        } else {
+            MalletAnnotations.writeLayout(glsl, layout, true);
+        }
+
+        glsl.append("buffer ");
+
+        String structName = "BufferStruct_" + id;
+        glsl.append(structName);
+
+        glsl.append(" {\n");
+        glsl.append("    ");
+
+        Type type = staticField.getType();
+        Type elementType = type.getSort() == Type.ARRAY ? type.getElementType() : type;
+
+        MalletType malletType = globalContext.getType(elementType);
+
+        glsl.append(malletType.getName());
+        glsl.append(" value");
+
+        if (type.getSort() == Type.ARRAY) {
+            writeArrayDimensions(glsl, staticField, type);
+        }
+
+        glsl.append(";\n} ");
+
+        glsl.append(staticField.getFieldName());
+
+        glsl.append(";\n");
+    }
+
+    private void writeArrayDimensions(StringBuilder glsl, StaticField staticField, Type type) {
+        ArraySize arraySize = staticField.getAnnotation(ArraySize.class);
+        int numDimensions = type.getDimensions();
+
+        int[] givenDimensions = arraySize != null ? arraySize.dimensions() : new int[0];
+
+        if (givenDimensions.length + 1 == numDimensions) {
+            glsl.append("[]");
+        } else if (givenDimensions.length + 1 < numDimensions) {
+            throw new RuntimeException("Not enough dimensions given for array");
+        } else if (numDimensions < givenDimensions.length) {
+            throw new RuntimeException("Too many dimensions given for array");
+        }
+
+        for (int givenDimension : givenDimensions) {
+            glsl.append("[").append(givenDimension).append("]");
         }
     }
 
     private void defineTypes(StringBuilder glsl, Set<Type> usedTypes) {
-        //Must be defined in correct order
+        Set<Type> definedTypes = new HashSet<>();
+        Set<Type> undefinedTypes = new HashSet<>(usedTypes);
 
-        Graph<Type> graph = new Graph<>();
-
-        for (Type type : usedTypes) {
-            MalletType malletType = globalContext.getType(type);
-
-            for (Type mustComeBefore : malletType.dependsOn()) {
-                graph.addEdge(mustComeBefore, type);
+        while (!undefinedTypes.isEmpty()) {
+            for (Type type : undefinedTypes) {
+                MalletType malletType = globalContext.getType(type);
+                if (definedTypes.containsAll(malletType.dependsOn())) {
+                    malletType.declareType(glsl, globalContext);
+                    definedTypes.add(type);
+                    undefinedTypes.remove(type);
+                    break;
+                }
             }
-        }
-
-        List<Type> sortedTypes = new ArrayList<>(usedTypes);
-        Stack<Type> stack = new Stack<>();
-        stack.push(graph.getRoot());
-
-        while (!stack.isEmpty()) {
-            Type type = stack.pop();
-
-            if (sortedTypes.contains(type)) {
-                continue;
-            }
-
-            sortedTypes.add(type);
-
-            for (Type child : graph.getNode(type).getOut()) {
-                stack.push(child);
-            }
-        }
-
-        for (Type type : sortedTypes) {
-            MalletType malletType = globalContext.getType(type);
-            malletType.declareType(glsl, globalContext);
         }
     }
 
     private void gatherUsedTypes(Set<Type> usedTypes, CompiledMethod compiledMethod) {
-        for (Type argumentType : compiledMethod.getArgumentTypes()) {
-            usedTypes.add(argumentType);
-        }
+        usedTypes.addAll(Arrays.asList(compiledMethod.getArgumentTypes()));
         if (compiledMethod.getReturnType() != Type.VOID_TYPE) {
             usedTypes.add(compiledMethod.getReturnType());
         }
@@ -464,19 +571,33 @@ public class ShaderCompiler {
     }
 
     private void addDefaultState() {
-        globalState.add(new StaticField(
-                Type.getType(VertexShader.class),
-                "gl_Position",
-                Type.getType(Vec4.class),
-                this
-        ));
+        Class<? extends Shader> shaderClass = (Class<? extends Shader>) Util.getClass(mainClass).getSuperclass();
 
-        globalState.add(new StaticField(
-                mainClass,
-                "gl_Position",
-                Type.getType(Vec4.class),
-                this
-        ));
+        Type shaderType = Type.getType(shaderClass);
+
+        for (Field field : shaderClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(ShaderInput.class)) {
+                Type fieldType = Type.getType(field.getType());
+
+                globalState.add(
+                        new StaticField(
+                                shaderType,
+                                field.getName(),
+                                fieldType,
+                                this
+                        )
+                );
+
+                globalState.add(
+                        new StaticField(
+                                mainClass,
+                                field.getName(),
+                                fieldType,
+                                this
+                        )
+                );
+            }
+        }
     }
 
     private JavaDecompiler makeMainDecompiler() {
@@ -612,35 +733,6 @@ public class ShaderCompiler {
         return false;
     }
 
-    static {
-        if(AUTO_CONVERT_JOML_ITF) {
-            //Float
-            AUTO_CONVERT.put(Type.getType(Vector2fc.class), Type.getType(Vector2f.class));
-            AUTO_CONVERT.put(Type.getType(Vector3fc.class), Type.getType(Vector3f.class));
-            AUTO_CONVERT.put(Type.getType(Vector4fc.class), Type.getType(Vector4f.class));
-            AUTO_CONVERT.put(Type.getType(Matrix2fc.class), Type.getType(Matrix2f.class));
-            AUTO_CONVERT.put(Type.getType(Matrix3fc.class), Type.getType(Matrix3f.class));
-            AUTO_CONVERT.put(Type.getType(Matrix3x2fc.class), Type.getType(Matrix3x2f.class));
-            AUTO_CONVERT.put(Type.getType(Matrix4fc.class), Type.getType(Matrix4f.class));
-            AUTO_CONVERT.put(Type.getType(Matrix4x3fc.class), Type.getType(Matrix4x3f.class));
-
-            //Double
-            AUTO_CONVERT.put(Type.getType(Vector2dc.class), Type.getType(Vector2d.class));
-            AUTO_CONVERT.put(Type.getType(Vector3dc.class), Type.getType(Vector3d.class));
-            AUTO_CONVERT.put(Type.getType(Vector4dc.class), Type.getType(Vector4d.class));
-            AUTO_CONVERT.put(Type.getType(Matrix2dc.class), Type.getType(Matrix2d.class));
-            AUTO_CONVERT.put(Type.getType(Matrix3dc.class), Type.getType(Matrix3d.class));
-            AUTO_CONVERT.put(Type.getType(Matrix3x2dc.class), Type.getType(Matrix3x2d.class));
-            AUTO_CONVERT.put(Type.getType(Matrix4dc.class), Type.getType(Matrix4d.class));
-            AUTO_CONVERT.put(Type.getType(Matrix4x3dc.class), Type.getType(Matrix4x3d.class));
-
-            //Int
-            AUTO_CONVERT.put(Type.getType(Vector2ic.class), Type.getType(Vector2i.class));
-            AUTO_CONVERT.put(Type.getType(Vector3ic.class), Type.getType(Vector3i.class));
-            AUTO_CONVERT.put(Type.getType(Vector4ic.class), Type.getType(Vector4i.class));
-        }
-    }
-
     public void callMethod(StringBuilder sb, MethodCall methodCall) {
         //Remove object.<init>
         if(methodCall.getInvocation().methodName().equals("<init>") && methodCall.getInvocation().methodDesc().getDescriptor().equals("()V")) {
@@ -676,5 +768,55 @@ public class ShaderCompiler {
 
         //TODO: Method Resolvers
         throw new UnsupportedOperationException("Method Resolvers noNMet implemented yet. Could not find " + methodCall);
+    }
+
+    public void getStatic(StringBuilder sb, StaticField field) {
+        if (!globalState.contains(field)) {
+            throw new IllegalStateException("Static field " + field + " not found in global state");
+        }
+
+        ShaderInput in = field.getAnnotation(ShaderInput.class);
+        if (in != null && !in.getter().equals("")) {
+            sb.append(in.getter());
+            return;
+        }
+
+        sb.append(field.getFieldName());
+        if (buffers.contains(field)) {
+            sb.append(".value");
+        }
+    }
+
+    public GlobalCompilationContext getGlobalContext() {
+        return globalContext;
+    }
+
+    static {
+        if(AUTO_CONVERT_JOML_ITF) {
+            //Float
+            AUTO_CONVERT.put(Type.getType(Vector2fc.class), Type.getType(Vector2f.class));
+            AUTO_CONVERT.put(Type.getType(Vector3fc.class), Type.getType(Vector3f.class));
+            AUTO_CONVERT.put(Type.getType(Vector4fc.class), Type.getType(Vector4f.class));
+            AUTO_CONVERT.put(Type.getType(Matrix2fc.class), Type.getType(Matrix2f.class));
+            AUTO_CONVERT.put(Type.getType(Matrix3fc.class), Type.getType(Matrix3f.class));
+            AUTO_CONVERT.put(Type.getType(Matrix3x2fc.class), Type.getType(Matrix3x2f.class));
+            AUTO_CONVERT.put(Type.getType(Matrix4fc.class), Type.getType(Matrix4f.class));
+            AUTO_CONVERT.put(Type.getType(Matrix4x3fc.class), Type.getType(Matrix4x3f.class));
+
+            //Double
+            AUTO_CONVERT.put(Type.getType(Vector2dc.class), Type.getType(Vector2d.class));
+            AUTO_CONVERT.put(Type.getType(Vector3dc.class), Type.getType(Vector3d.class));
+            AUTO_CONVERT.put(Type.getType(Vector4dc.class), Type.getType(Vector4d.class));
+            AUTO_CONVERT.put(Type.getType(Matrix2dc.class), Type.getType(Matrix2d.class));
+            AUTO_CONVERT.put(Type.getType(Matrix3dc.class), Type.getType(Matrix3d.class));
+            AUTO_CONVERT.put(Type.getType(Matrix3x2dc.class), Type.getType(Matrix3x2d.class));
+            AUTO_CONVERT.put(Type.getType(Matrix4dc.class), Type.getType(Matrix4d.class));
+            AUTO_CONVERT.put(Type.getType(Matrix4x3dc.class), Type.getType(Matrix4x3d.class));
+
+            //Int
+            AUTO_CONVERT.put(Type.getType(Vector2ic.class), Type.getType(Vector2i.class));
+            AUTO_CONVERT.put(Type.getType(Vector3ic.class), Type.getType(Vector3i.class));
+            AUTO_CONVERT.put(Type.getType(Vector4ic.class), Type.getType(Vector4i.class));
+        }
     }
 }

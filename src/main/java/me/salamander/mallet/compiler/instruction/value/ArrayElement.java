@@ -7,6 +7,7 @@ import me.salamander.mallet.compiler.analysis.mutability.MutabilityValue;
 import me.salamander.mallet.util.ASMUtil;
 import org.objectweb.asm.Type;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -31,7 +32,7 @@ public class ArrayElement implements Location, Value {
 
     @Override
     public List<Variable> usedVariables() {
-        List<Variable> used = array.usedVariables();
+        List<Variable> used = new ArrayList<>(array.usedVariables());
         used.addAll(index.usedVariables());
         return used;
     }

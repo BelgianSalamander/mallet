@@ -30,6 +30,10 @@ public class Graph<T> {
         return nodes.values().stream().filter(node -> node.inNeighbors.isEmpty()).findFirst().get().element;
     }
 
+    public Collection<T> getRoots() {
+        return nodes.values().stream().filter(node -> node.inNeighbors.isEmpty()).map(Node::getElement).collect(Collectors.toList());
+    }
+
     public class Node {
         private final T element;
         private final Set<Node> inNeighbors = new HashSet<>();

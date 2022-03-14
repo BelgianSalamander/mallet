@@ -3,6 +3,7 @@ package me.salamander.mallet.compiler.type;
 import me.salamander.mallet.compiler.GlobalCompilationContext;
 import me.salamander.mallet.glsltypes.Vec2;
 import me.salamander.mallet.glsltypes.Vec3;
+import me.salamander.mallet.glsltypes.Vec3i;
 import me.salamander.mallet.glsltypes.Vec4;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.analysis.BasicValue;
@@ -21,6 +22,8 @@ public class BasicType extends MalletType {
     public static final BasicType VEC2 = new BasicType(Type.getType(Vec2.class), "vec2", "", "vec2(0.0f, 0.0f)");
     public static final BasicType VEC3 = new BasicType(Type.getType(Vec3.class), "vec3", "", "vec3(0.0f, 0.0f, 0.0f)");
     public static final BasicType VEC4 = new BasicType(Type.getType(Vec4.class), "vec4", "", "vec4(0.0f, 0.0f, 0.0f, 0.0f)");
+
+    public static final BasicType VEC3I = new BasicType(Type.getType(Vec3i.class), "ivec3", "", "ivec3(0, 0, 0)");
     //Long is not supported in GLSL
 
     private final String postfix;
