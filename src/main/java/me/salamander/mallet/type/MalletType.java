@@ -1,7 +1,10 @@
-package me.salamander.mallet.shaders.compiler.type;
+package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
+import me.salamander.mallet.shaders.compiler.ShaderCompiler;
+import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
+import me.salamander.mallet.type.io.StructVisitor;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.Type;
 
@@ -29,6 +32,15 @@ public abstract class MalletType {
     public abstract void make(StringBuilder sb, Object obj, MalletContext context);
 
     protected abstract void makeAny(StringBuilder sb, MalletContext context);
+
+    protected abstract int getSize();
+    protected abstract int getAlignment();
+
+    public void getField(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
+        field.getObject().writeGLSL(sb, context, shaderCompiler);
+        sb.append('.');
+        sb.append(field.getFieldName());
+    }
 
     public abstract Set<Type> dependsOn();
 

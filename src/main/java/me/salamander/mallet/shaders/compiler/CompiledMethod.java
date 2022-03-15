@@ -18,7 +18,7 @@ import me.salamander.mallet.shaders.compiler.instruction.value.Location;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import me.salamander.mallet.shaders.compiler.instruction.value.Variable;
 import me.salamander.mallet.shaders.compiler.instruction.value.VariableType;
-import me.salamander.mallet.shaders.compiler.type.MalletType;
+import me.salamander.mallet.type.MalletType;
 import me.salamander.mallet.util.Ref;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.Type;

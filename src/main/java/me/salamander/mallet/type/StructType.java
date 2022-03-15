@@ -1,4 +1,4 @@
-package me.salamander.mallet.shaders.compiler.type;
+package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
 import me.salamander.mallet.shaders.annotation.NullableType;
@@ -138,6 +138,16 @@ public class StructType extends MalletType {
         }
 
         sb.append(")");
+    }
+
+    @Override
+    protected int getSize() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected int getAlignment() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

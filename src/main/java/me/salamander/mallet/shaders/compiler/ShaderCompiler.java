@@ -22,7 +22,7 @@ import me.salamander.mallet.shaders.compiler.instruction.AssignmentInstruction;
 import me.salamander.mallet.shaders.compiler.instruction.Instruction;
 import me.salamander.mallet.shaders.compiler.instruction.MethodCallInstruction;
 import me.salamander.mallet.shaders.compiler.instruction.value.*;
-import me.salamander.mallet.shaders.compiler.type.MalletType;
+import me.salamander.mallet.type.MalletType;
 import me.salamander.mallet.shaders.shader.ComputeShader;
 import me.salamander.mallet.shaders.shader.Shader;
 import me.salamander.mallet.util.*;
@@ -863,6 +863,13 @@ public class ShaderCompiler {
         if (buffers.contains(field)) {
             sb.append(".value");
         }
+    }
+
+    public void getField(StringBuilder sb, ObjectField field) {
+        Type type = field.getObject().getType();
+        MalletType malletType = globalContext.getType(type);
+
+        malletType.getField(sb, field, this);
     }
 
     public MalletContext getGlobalContext() {

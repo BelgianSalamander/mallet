@@ -7,7 +7,7 @@ import me.salamander.mallet.shaders.compiler.analysis.mutability.Mutability;
 import me.salamander.mallet.shaders.compiler.analysis.mutability.MutabilityValue;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import me.salamander.mallet.shaders.compiler.instruction.value.Variable;
-import me.salamander.mallet.shaders.compiler.type.MalletType;
+import me.salamander.mallet.type.MalletType;
 import me.salamander.mallet.util.ASMUtil;
 import org.objectweb.asm.Type;
 

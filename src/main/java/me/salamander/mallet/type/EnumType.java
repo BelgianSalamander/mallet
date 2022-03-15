@@ -1,6 +1,8 @@
-package me.salamander.mallet.shaders.compiler.type;
+package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
+import me.salamander.mallet.shaders.compiler.ShaderCompiler;
+import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.Type;
@@ -14,11 +16,13 @@ import java.util.Set;
 
 public class EnumType extends MalletType{
     private final List<Field> fields = new ArrayList<>();
+    private final Class<? extends Enum<?>> clazz;
 
     public EnumType(Type type, MalletContext context) {
         super(type, context);
 
         Class<?> clazz = Util.getClass(type);
+        this.clazz = (Class<? extends Enum<?>>) clazz;
 
         if(!clazz.isEnum()) {
             throw new IllegalArgumentException("Type " + type + " is not an enum");
@@ -47,19 +51,44 @@ public class EnumType extends MalletType{
         sb.append(" {\n");
 
         sb.append(Util.indent);
-        sb.append("uint ordinal;\n");
+        sb.append("uint ordinal;\n};\n\n");
 
+        //Define fields
         for (Field field : fields) {
-            sb.append(Util.indent);
-            Type type = Type.getType(field.getType());
-            MalletType fieldType = context.getType(type);
+            MalletType fieldType = context.getType(Type.getType(field.getType()));
             sb.append(fieldType.getName());
             sb.append(" ");
-            sb.append(Util.removeSpecial(field.getName()));
-            sb.append(";\n");
-        }
+            sb.append(this.getArrayName(field));
+            sb.append(" = {\n");
 
-        sb.append("};\n\n");
+            Enum<?>[] constants = clazz.getEnumConstants();
+
+            for (int i = 0; i < constants.length; i++) {
+                Enum<?> constant = constants[i];
+
+                if (i > 0) {
+                    sb.append(",\n");
+                }
+
+                sb.append(Util.indent);
+                try {
+                    Object value = field.get(constant);
+                    fieldType.make(sb, value, context);
+                } catch (IllegalArgumentException | IllegalAccessException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+
+            sb.append("\n};\n\n");
+        }
+    }
+
+    private String getArrayName(Field field) {
+        return this.getName() + "_" + field.getName();
+    }
+
+    private String getArrayName(ObjectField field) {
+        return this.getName() + "_" + field.getFieldName();
     }
 
     @Override
@@ -69,15 +98,17 @@ public class EnumType extends MalletType{
 
     @Override
     protected void makeAny(StringBuilder sb, MalletContext context) {
-        sb.append(this.getName()).append("(-1");
-        for (Field field : fields) {
-            sb.append(", ");
+        sb.append(this.getName()).append("(-1)");
+    }
 
-            MalletType fieldType = context.getType(Type.getType(field.getType()));
-            fieldType.makeAny(sb, context);
-        }
+    @Override
+    protected int getSize() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 
-        sb.append(")");
+    @Override
+    protected int getAlignment() {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -92,19 +123,26 @@ public class EnumType extends MalletType{
         sb.append(this.getName());
         sb.append("(");
         sb.append(enumObj.ordinal());
+        sb.append(")");
+    }
 
-        try {
-            for (Field value : fields) {
-                sb.append(", ");
-
-                MalletType field = context.getType(Type.getType(value.getType()));
-                field.make(sb, value.get(obj), context);
-            }
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+    @Override
+    public void getField(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
+        if (field.getType() == Type.INT_TYPE && field.getFieldName().equals("ordinal")) {
+            getOrdinal(sb, field, shaderCompiler);
+            return;
         }
 
-        sb.append(")");
+        sb.append(this.getArrayName(field));
+        sb.append("[");
+        field.getObject().writeGLSL(sb, shaderCompiler.getGlobalContext(), shaderCompiler);
+        sb.append("ordinal]");
+    }
+
+    private void getOrdinal(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
+        sb.append("int(");
+        field.getObject().writeGLSL(sb, shaderCompiler.getGlobalContext(), shaderCompiler);
+        sb.append(".ordinal)");
     }
 
     @Override
