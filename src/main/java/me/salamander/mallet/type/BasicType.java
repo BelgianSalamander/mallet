@@ -5,6 +5,8 @@ import me.salamander.mallet.shaders.glsltypes.Vec2;
 import me.salamander.mallet.shaders.glsltypes.Vec3;
 import me.salamander.mallet.shaders.glsltypes.Vec3i;
 import me.salamander.mallet.shaders.glsltypes.Vec4;
+import me.salamander.mallet.type.construct.ObjectConstructor;
+import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -25,14 +27,16 @@ public abstract class BasicType extends MalletType {
     private final int size;
     private final int alignment;
     private final Object writer;
+    private final boolean isMalletPrimitive;
 
-    protected BasicType(Type javaType, String glslName, String postfix, String defaultValue, MalletContext context, int size, int alignment, Object writer) {
+    protected BasicType(Type javaType, String glslName, String postfix, String defaultValue, MalletContext context, int size, int alignment, Object writer, boolean isMalletPrimitive) {
         super(javaType, glslName, context);
         this.postfix = postfix;
         this.defaultValue = defaultValue;
         this.size = size;
         this.alignment = alignment;
         this.writer = writer;
+        this.isMalletPrimitive = isMalletPrimitive;
     }
 
     @Override
@@ -91,46 +95,100 @@ public abstract class BasicType extends MalletType {
     }
 
     @Override
-    public boolean isPrimitive() {
+    public boolean isGLSLPrimitive() {
         return true;
     }
 
-    public static BasicType[] makeTypes(MalletContext context) {
-        return new BasicType[] {
-                new BasicType(Type.INT_TYPE, "int", "", "0", context, 4, 4, IntWriter.INSTANCE){
-                    @Override
-                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
-                        bufferLoader.accept(mv);
-                        objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
-                    }
-                },
+    @Override
+    public MalletType getTypeOfField(String field) {
+        throw new IllegalStateException("Cannot get type of field " + field + " on " + getName());
+    }
 
-                new BasicType(Type.FLOAT_TYPE, "float", "", "0.0f", context, 4, 4, FloatWriter.INSTANCE){
-                    @Override
-                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
-                        bufferLoader.accept(mv);
-                        objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
-                    }
-                },
-                new BasicType(Type.DOUBLE_TYPE, "double", "", "0.0", context, 8, 8, DoubleWriter.INSTANCE){
+    @Override
+    public int getOffsetOfField(String field) {
+        throw new IllegalStateException("Cannot get offset of field " + field + " on " + getName());
+    }
+
+    @Override
+    public boolean isMalletPrimitive() {
+        return isMalletPrimitive;
+    }
+
+    public static BasicType[] makeTypes(MalletContext context) {
+        BasicType int_ = new BasicType(Type.INT_TYPE, "int", "", "0", context, 4, 4, IntWriter.INSTANCE, true){
+            @Override
+            protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                bufferLoader.accept(mv);
+                objectLoader.accept(mv);
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
+            }
+
+            @Override
+            protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                bufferLoader.accept(mv);
+                startPosLoader.accept(mv);
+                ASMUtil.visitIntConstant(mv, baseOffset);
+                mv.visitInsn(Opcodes.IADD);
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "(I)I", false);
+            }
+        };
+
+        BasicType float_ = new BasicType(Type.FLOAT_TYPE, "float", "", "0.0f", context, 4, 4, FloatWriter.INSTANCE, true){
+            @Override
+            protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                bufferLoader.accept(mv);
+                objectLoader.accept(mv);
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
+            }
+
+            @Override
+            protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                bufferLoader.accept(mv);
+                startPosLoader.accept(mv);
+                ASMUtil.visitIntConstant(mv, baseOffset);
+                mv.visitInsn(Opcodes.IADD);
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
+            }
+        };
+
+        return new BasicType[] {
+                int_,
+                float_,
+                new BasicType(Type.DOUBLE_TYPE, "double", "", "0.0", context, 8, 8, DoubleWriter.INSTANCE, true){
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putDouble", "(D)Ljava/nio/ByteBuffer;", false);
                     }
+
+                    @Override
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getDouble", "(I)D", false);
+                    }
                 },
-                new BasicType(Type.BOOLEAN_TYPE, "bool", "", "false", context, 1, 1, BooleanWriter.INSTANCE){
+                new BasicType(Type.BOOLEAN_TYPE, "bool", "", "false", context, 1, 1, BooleanWriter.INSTANCE, true){
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "put", "(B)Ljava/nio/ByteBuffer;", false);
                     }
+
+                    @Override
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "get", "(I)B", false);
+                    }
                 },
-                new BasicType(Type.getType(Vec2.class), "vec2", "", "vec2(0.0f, 0.0f)", context, 8, 8, Vec2Writer.INSTANCE) {
+                new BasicType(Type.getType(Vec2.class), "vec2", "", "vec2(0.0f, 0.0f)", context, 8, 8, Vec2Writer.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
@@ -143,8 +201,44 @@ public abstract class BasicType extends MalletType {
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
                     }
+
+                    @Override
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                        mv.visitTypeInsn(Opcodes.NEW, Vec2.class.getName().replace('.', '/'));
+                        mv.visitInsn(Opcodes.DUP);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 4);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "<init>", "(FF)V", false);
+                    }
+
+                    @Override
+                    public MalletType getTypeOfField(String field) {
+                        return float_;
+                    }
+
+                    @Override
+                    public int getOffsetOfField(String field) {
+                        if (field.equals("x")) {
+                            return 0;
+                        } else if (field.equals("y")) {
+                            return 4;
+                        } else {
+                            throw new IllegalArgumentException("Unknown field: " + field);
+                        }
+                    }
                 },
-                new BasicType(Type.getType(Vec3.class), "vec3", "", "vec3(0.0f, 0.0f, 0.0f)", context, 16, 16, Vec3Writer.INSTANCE) {
+                new BasicType(Type.getType(Vec3.class), "vec3", "", "vec3(0.0f, 0.0f, 0.0f)", context, 16, 16, Vec3Writer.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
@@ -162,8 +256,52 @@ public abstract class BasicType extends MalletType {
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "z", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
                     }
+
+                    @Override
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                        mv.visitTypeInsn(Opcodes.NEW, Vec3.class.getName().replace('.', '/'));
+                        mv.visitInsn(Opcodes.DUP);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 4);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 8);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "<init>", "(FFF)V", false);
+                    }
+
+                    @Override
+                    public MalletType getTypeOfField(String field) {
+                        return float_;
+                    }
+
+                    @Override
+                    public int getOffsetOfField(String field) {
+                        if (field.equals("x")) {
+                            return 0;
+                        } else if (field.equals("y")) {
+                            return 4;
+                        } else if (field.equals("z")) {
+                            return 8;
+                        } else {
+                            throw new IllegalArgumentException("Unknown field: " + field);
+                        }
+                    }
                 },
-                new BasicType(Type.getType(Vec4.class), "vec4", "", "vec4(0.0f, 0.0f, 0.0f, 0.0f)", context, 16, 16, Vec4Writer.INSTANCE) {
+                new BasicType(Type.getType(Vec4.class), "vec4", "", "vec4(0.0f, 0.0f, 0.0f, 0.0f)", context, 16, 16, Vec4Writer.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
@@ -186,8 +324,57 @@ public abstract class BasicType extends MalletType {
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "w", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
                     }
+
+                    @Override
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 4);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 8);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 12);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "<init>", "(FFFF)V", false);
+                    }
+
+                    @Override
+                    public MalletType getTypeOfField(String field) {
+                        return float_;
+                    }
+
+                    @Override
+                    public int getOffsetOfField(String field) {
+                        if (field.equals("x")) {
+                            return 0;
+                        } else if (field.equals("y")) {
+                            return 4;
+                        } else if (field.equals("z")) {
+                            return 8;
+                        } else if (field.equals("w")) {
+                            return 12;
+                        } else {
+                            throw new IllegalArgumentException("Unknown field: " + field);
+                        }
+                    }
                 },
-                new BasicType(Type.getType(Vec3i.class), "ivec3", "", "ivec3(0, 0, 0)", context, 16, 16, Vec3iWriter.INSTANCE) {
+                new BasicType(Type.getType(Vec3i.class), "ivec3", "", "ivec3(0, 0, 0)", context, 16, 16, Vec3iWriter.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
@@ -204,6 +391,47 @@ public abstract class BasicType extends MalletType {
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "z", "()I", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                    }
+
+                    @Override
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getInt", "(Ljava/nio/ByteBuffer;I)I", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 4);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getInt", "(Ljava/nio/ByteBuffer;I)I", false);
+
+                        bufferLoader.accept(mv);
+                        startPosLoader.accept(mv);
+                        ASMUtil.visitIntConstant(mv, baseOffset + 8);
+                        mv.visitInsn(Opcodes.IADD);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getInt", "(Ljava/nio/ByteBuffer;I)I", false);
+
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "<init>", "(III)V", false);
+                    }
+
+                    @Override
+                    public MalletType getTypeOfField(String field) {
+                        return int_;
+                    }
+
+                    @Override
+                    public int getOffsetOfField(String field) {
+                        if (field.equals("x")) {
+                            return 0;
+                        } else if (field.equals("y")) {
+                            return 4;
+                        } else if (field.equals("z")) {
+                            return 8;
+                        } else {
+                            throw new IllegalArgumentException("Unknown field: " + field);
+                        }
                     }
                 },
         };

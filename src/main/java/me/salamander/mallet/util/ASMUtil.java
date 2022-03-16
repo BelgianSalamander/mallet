@@ -119,6 +119,21 @@ public class ASMUtil {
         return cw.toByteArray();
     }
 
+    public static void createDefaultConstructor(ClassNode classNode) {
+        //Create constructor
+        MethodVisitor constructorMethod = classNode.visitMethod(
+                Opcodes.ACC_PUBLIC | Opcodes.ACC_SYNTHETIC,
+                "<init>",
+                "()V",
+                null,
+                null
+        );
+        constructorMethod.visitCode();
+        constructorMethod.visitVarInsn(Opcodes.ALOAD, 0);
+        constructorMethod.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        constructorMethod.visitInsn(Opcodes.RETURN);
+    }
+
     static {
         Class<?> clazz = GL45.class;
 

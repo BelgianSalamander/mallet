@@ -2,6 +2,8 @@ package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
 import me.salamander.mallet.shaders.annotation.NullableType;
+import me.salamander.mallet.type.construct.ObjectConstructor;
+import me.salamander.mallet.type.construct.UnsafeConstructor;
 import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.Label;
@@ -12,10 +14,7 @@ import org.objectweb.asm.tree.ClassNode;
 
 import java.lang.reflect.*;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -27,6 +26,8 @@ public class StructType extends MalletType {
     private final boolean nullable;
     private int size, alignment;
     private final int[] offsets;
+    public ObjectConstructor constructor;
+
     private BiConsumer<ByteBuffer, Object> cachedWriter = null;
 
     public StructType(Type type, MalletContext ctx) {
@@ -34,6 +35,7 @@ public class StructType extends MalletType {
 
         List<Field> fields = new ArrayList<>();
         Class<?> clazz = Util.getClass(type);
+        this.constructor = new UnsafeConstructor(clazz);
         Class<?> baseClass = clazz;
         while (clazz != null) {
             for (Field field : clazz.getDeclaredFields()) {
@@ -274,7 +276,7 @@ public class StructType extends MalletType {
             throw new RuntimeException(e);
         }
 
-        createDefaultConstructor(classNode);
+        ASMUtil.createDefaultConstructor(classNode);
 
         createGenericDelegator(classNode, method);
 
@@ -319,7 +321,19 @@ public class StructType extends MalletType {
         mv.visitIntInsn(Opcodes.BIPUSH, getAlignment());
         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "me/salamander/mallet/util/Util", "align", "(Ljava/nio/ByteBuffer;I)V", false);
 
-        makeWriterCode(mv, (mv1) -> mv1.visitVarInsn(Opcodes.ALOAD, 1), (mv1) -> mv1.visitVarInsn(Opcodes.ALOAD, 2), 3);
+        //Store start position in var 3
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "position", "()I", false);
+        mv.visitVarInsn(Opcodes.ISTORE, 3);
+
+        makeWriterCode(mv, (mv1) -> mv1.visitVarInsn(Opcodes.ALOAD, 1), (mv1) -> mv1.visitVarInsn(Opcodes.ALOAD, 2), 4);
+
+        //Set position to proper end
+        mv.visitVarInsn(Opcodes.ALOAD, 1);
+        mv.visitVarInsn(Opcodes.ILOAD, 3);
+        ASMUtil.visitIntConstant(mv, getSize());
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "position", "(I)Ljava/nio/Buffer;", false);
 
         mv.visitInsn(Opcodes.RETURN);
         mv.visitLabel(end);
@@ -359,21 +373,6 @@ public class StructType extends MalletType {
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, classNode.name, method.getName(), "(Ljava/nio/ByteBuffer;" + this.getJavaType().getDescriptor() + ")V", false);
         mv.visitInsn(Opcodes.RETURN);
         mv.visitLabel(methodEnd);
-    }
-
-    private static void createDefaultConstructor(ClassNode classNode) {
-        //Create constructor
-        MethodVisitor constructorMethod = classNode.visitMethod(
-                Opcodes.ACC_PUBLIC | Opcodes.ACC_SYNTHETIC,
-                "<init>",
-                "()V",
-                null,
-                null
-        );
-        constructorMethod.visitCode();
-        constructorMethod.visitVarInsn(Opcodes.ALOAD, 0);
-        constructorMethod.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        constructorMethod.visitInsn(Opcodes.RETURN);
     }
 
     @Override
@@ -475,6 +474,36 @@ public class StructType extends MalletType {
     }
 
     @Override
+    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+        for (String field : this.constructor.fieldsUsed()) {
+            //Find offset
+            int offset = -1;
+            for (int i = 0; i < fields.size(); i++) {
+                if (fields.get(i).getName().equals(field)) {
+                    offset = offsets[i];
+                    break;
+                }
+            }
+
+            if (offset == -1) {
+                throw new RuntimeException("Could not find field " + field + " in " + this.getName());
+            }
+
+            //Load field
+            MalletType typeOfField = this.getTypeOfField(field);
+            typeOfField.makeReaderCode(
+                    mv,
+                    baseOffset + offset,
+                    bufferLoader,
+                    startPosLoader,
+                    baseVarIndex
+            );
+        }
+
+        this.constructor.construct(mv, baseVarIndex);
+    }
+
+    @Override
     public Set<Type> dependsOn() {
         Set<Type> dependsOn = new HashSet<>();
 
@@ -486,7 +515,38 @@ public class StructType extends MalletType {
     }
 
     @Override
-    public boolean isPrimitive() {
+    public boolean isGLSLPrimitive() {
         return false;
+    }
+
+    @Override
+    public boolean isMalletPrimitive() {
+        return false;
+    }
+
+    @Override
+    public MalletType getTypeOfField(String field) {
+        for (Field f : fields) {
+            if (f.getName().equals(field)) {
+                return context.getType(Type.getType(f.getType()));
+            }
+        }
+
+        throw new RuntimeException("Could not find field " + field + " in " + this.getName());
+    }
+
+    @Override
+    public int getOffsetOfField(String field) {
+        for (int i = 0; i < fields.size(); i++) {
+            if (fields.get(i).getName().equals(field)) {
+                return offsets[i];
+            }
+        }
+
+        throw new RuntimeException("Could not find field " + field + " in " + this.getName());
+    }
+
+    public List<Field> getFields() {
+        return fields;
     }
 }

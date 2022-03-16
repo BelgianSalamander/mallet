@@ -143,6 +143,18 @@ public class EnumType extends MalletType{
     }
 
     @Override
+    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazz.getName().replace('.', '/'), "values", "()[" + clazz.getName().replace('.', '/'), false);
+
+        bufferLoader.accept(mv);
+        startPosLoader.accept(mv);
+        mv.visitInsn(Opcodes.IADD);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "()I", false);
+
+        mv.visitInsn(Opcodes.AALOAD);
+    }
+
+    @Override
     public void make(StringBuilder sb, Object obj, MalletContext context) {
         if (obj == null) {
             makeAny(sb, context);
@@ -158,7 +170,7 @@ public class EnumType extends MalletType{
     }
 
     @Override
-    public void getField(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
+    public void writeGLSLForGetField(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
         if (field.getType() == Type.INT_TYPE && field.getFieldName().equals("ordinal")) {
             getOrdinal(sb, field, shaderCompiler);
             return;
@@ -188,8 +200,23 @@ public class EnumType extends MalletType{
     }
 
     @Override
-    public boolean isPrimitive() {
+    public boolean isGLSLPrimitive() {
         return false;
+    }
+
+    @Override
+    public boolean isMalletPrimitive() {
+        return true;
+    }
+
+    @Override
+    public MalletType getTypeOfField(String field) {
+        throw new IllegalStateException("Enum has no fields");
+    }
+
+    @Override
+    public int getOffsetOfField(String field) {
+        throw new IllegalStateException("Enum has no fields");
     }
 
     @Override

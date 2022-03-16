@@ -2,6 +2,7 @@ package me.salamander.mallet.util;
 
 import it.unimi.dsi.fastutil.Hash;
 import org.objectweb.asm.Type;
+import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 import java.nio.Buffer;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class Util {
+    public static final Unsafe UNSAFE;
     public static final String indent = "    ";
     public static Hash.Strategy<Object> IDENTITY_HASH_STRATEGY = new Hash.Strategy<Object>() {
         public int hashCode(Object o) {
@@ -118,5 +120,16 @@ public class Util {
     //Useful in debugging StackOverflowErrors
     public static boolean isCallStackLarge() {
         return Thread.currentThread().getStackTrace().length > 1000;
+    }
+
+    static {
+        try {
+            Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+            Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            UNSAFE = (Unsafe) theUnsafe.get(null);
+        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -200,7 +200,7 @@ public class ShaderCompiler {
         for (StaticField staticField : shaderVertexInputs) {
             MalletType malletType = globalContext.getType(staticField.getType());
 
-            if(!malletType.isPrimitive()) {
+            if(!malletType.isGLSLPrimitive()) {
                 throw new RuntimeException("Vertex inputs must be primitive types");
             }
 
@@ -869,7 +869,7 @@ public class ShaderCompiler {
         Type type = field.getObject().getType();
         MalletType malletType = globalContext.getType(type);
 
-        malletType.getField(sb, field, this);
+        malletType.writeGLSLForGetField(sb, field, this);
     }
 
     public MalletContext getGlobalContext() {
