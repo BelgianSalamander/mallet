@@ -4,11 +4,13 @@ import me.salamander.mallet.MalletContext;
 import me.salamander.mallet.shaders.compiler.ShaderCompiler;
 import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
-import me.salamander.mallet.type.io.StructVisitor;
 import me.salamander.mallet.util.Util;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.InsnList;
 
 import java.util.Set;
+import java.util.function.Consumer;
 
 public abstract class MalletType {
     private final Type javaType;
@@ -35,6 +37,24 @@ public abstract class MalletType {
 
     protected abstract int getSize();
     protected abstract int getAlignment();
+
+    protected abstract void printLayout(StringBuilder sb, String indent);
+
+    //Serialization
+    /**
+     * Returns a class that can be used to write an object of this type into a ByteBuffer.
+     * @param itf The functional interface type to use. Should be a functional interface which takes two parameters: The ByteBuffer and the object to write. The reason this
+     *            is not made a generic type is because Java doesn't support generic primitive types and so this can avoid boxing.
+     * @param <T> The type of the functional interface. BiConsumer.class is guaranteed to work for every type.
+     * @return A class that can be used to write an object of this type into a ByteBuffer.
+     */
+    public abstract <T> T makeWriter(Class<T> itf);
+
+    /**
+     * Assumes the position of the buffer is aligned
+     * @param insns The instructions to add to
+     */
+    protected abstract void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex);
 
     public void getField(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
         field.getObject().writeGLSL(sb, context, shaderCompiler);

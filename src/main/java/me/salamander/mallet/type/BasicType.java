@@ -5,25 +5,34 @@ import me.salamander.mallet.shaders.glsltypes.Vec2;
 import me.salamander.mallet.shaders.glsltypes.Vec3;
 import me.salamander.mallet.shaders.glsltypes.Vec3i;
 import me.salamander.mallet.shaders.glsltypes.Vec4;
+import me.salamander.mallet.util.Util;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.InsnList;
 
+import java.nio.ByteBuffer;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Types that exist in GLSL
  */
-public class BasicType extends MalletType {
+public abstract class BasicType extends MalletType {
     private final String postfix;
     private final String defaultValue;
     private final int size;
     private final int alignment;
+    private final Object writer;
 
-    protected BasicType(Type javaType, String glslName, String postfix, String defaultValue, MalletContext context, int size, int alignment) {
+    protected BasicType(Type javaType, String glslName, String postfix, String defaultValue, MalletContext context, int size, int alignment, Object writer) {
         super(javaType, glslName, context);
         this.postfix = postfix;
         this.defaultValue = defaultValue;
         this.size = size;
         this.alignment = alignment;
+        this.writer = writer;
     }
 
     @Override
@@ -58,6 +67,25 @@ public class BasicType extends MalletType {
     }
 
     @Override
+    protected void printLayout(StringBuilder sb, String indent) {
+        sb.append(indent);
+        sb.append(getName());
+        sb.append("Size: ").append(getSize());
+        sb.append(" Alignment: ").append(getAlignment());
+    }
+
+    @Override
+    public  <T> T makeWriter(Class<T> itf) {
+        if (itf.equals(BiConsumer.class)) {
+            if (writer instanceof Boxable boxable) {
+                return (T) boxable.box();
+            }
+        }
+
+        return (T) writer;
+    }
+
+    @Override
     public Set<Type> dependsOn() {
         return Set.of();
     }
@@ -69,14 +97,235 @@ public class BasicType extends MalletType {
 
     public static BasicType[] makeTypes(MalletContext context) {
         return new BasicType[] {
-                new BasicType(Type.INT_TYPE, "int", "", "0", context, 4, 4),
-                new BasicType(Type.FLOAT_TYPE, "float", "", "0.0f", context, 4, 4),
-                new BasicType(Type.DOUBLE_TYPE, "double", "", "0.0", context, 8, 8),
-                new BasicType(Type.BOOLEAN_TYPE, "bool", "", "false", context, 1, 1),
-                new BasicType(Type.getType(Vec2.class), "vec2", "", "vec2(0.0f, 0.0f)", context, 8, 8),
-                new BasicType(Type.getType(Vec3.class), "vec3", "", "vec3(0.0f, 0.0f, 0.0f)", context, 16, 16),
-                new BasicType(Type.getType(Vec4.class), "vec4", "", "vec4(0.0f, 0.0f, 0.0f, 0.0f)", context, 16, 16),
-                new BasicType(Type.getType(Vec3i.class), "ivec3", "", "ivec3(0, 0, 0)", context, 16, 16)
+                new BasicType(Type.INT_TYPE, "int", "", "0", context, 4, 4, IntWriter.INSTANCE){
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+
+                new BasicType(Type.FLOAT_TYPE, "float", "", "0.0f", context, 4, 4, FloatWriter.INSTANCE){
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+                new BasicType(Type.DOUBLE_TYPE, "double", "", "0.0", context, 8, 8, DoubleWriter.INSTANCE){
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putDouble", "(D)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+                new BasicType(Type.BOOLEAN_TYPE, "bool", "", "false", context, 1, 1, BooleanWriter.INSTANCE){
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "put", "(B)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+                new BasicType(Type.getType(Vec2.class), "vec2", "", "vec2(0.0f, 0.0f)", context, 8, 8, Vec2Writer.INSTANCE) {
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "x", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "y", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+                new BasicType(Type.getType(Vec3.class), "vec3", "", "vec3(0.0f, 0.0f, 0.0f)", context, 16, 16, Vec3Writer.INSTANCE) {
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "x", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "y", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "z", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+                new BasicType(Type.getType(Vec4.class), "vec4", "", "vec4(0.0f, 0.0f, 0.0f, 0.0f)", context, 16, 16, Vec4Writer.INSTANCE) {
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "x", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "y", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "z", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "w", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
+                new BasicType(Type.getType(Vec3i.class), "ivec3", "", "ivec3(0, 0, 0)", context, 16, 16, Vec3iWriter.INSTANCE) {
+                    @Override
+                    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "x", "()I", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "y", "()I", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+
+                        bufferLoader.accept(mv);
+                        objectLoader.accept(mv);
+                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "z", "()I", false);
+                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                    }
+                },
         };
+    }
+
+    private interface Boxable {
+        BiConsumer<ByteBuffer, Object> box();
+    }
+
+    @FunctionalInterface
+    public interface IntWriter extends Boxable {
+        IntWriter INSTANCE = (b, value) -> {
+            Util.align(b, 4);
+            b.putInt(value);
+        };
+
+        void write(ByteBuffer b, int value);
+
+        default BiConsumer<ByteBuffer, Object> box() {
+            return (b, value) -> write(b, (int) value);
+        }
+    }
+
+    @FunctionalInterface
+    public interface FloatWriter extends Boxable {
+        FloatWriter INSTANCE = (b, value) -> {
+            Util.align(b, 4);
+            b.putFloat(value);
+        };
+
+        void write(ByteBuffer b, float value);
+
+        default BiConsumer<ByteBuffer, Object> box() {
+            return (b, value) -> write(b, (float) value);
+        }
+    }
+
+    @FunctionalInterface
+    public interface DoubleWriter extends Boxable {
+        DoubleWriter INSTANCE = (b, value) -> {
+            Util.align(b, 8);
+            b.putDouble(value);
+        };
+        void write(ByteBuffer b, double value);
+
+        default BiConsumer<ByteBuffer, Object> box() {
+            return (b, value) -> write(b, (double) value);
+        }
+    }
+
+    @FunctionalInterface
+    public interface BooleanWriter extends Boxable {
+        BooleanWriter INSTANCE = (b, value) -> {
+            Util.align(b, 1);
+            b.put((byte) (value ? 1 : 0));
+        };
+        void write(ByteBuffer b, boolean value);
+
+        default BiConsumer<ByteBuffer, Object> box() {
+            return (b, value) -> write(b, (boolean) value);
+        }
+    }
+
+    @FunctionalInterface
+    public interface Vec2Writer extends BiConsumer<ByteBuffer, Object> {
+        Vec2Writer INSTANCE = (b, value) -> {
+            Util.align(b, 8);
+            b.putFloat(value.x());
+            b.putFloat(value.y());
+        };
+        void write(ByteBuffer b, Vec2 value);
+
+        @Override
+        default void accept(ByteBuffer buffer, Object vec2) {
+            write(buffer, (Vec2) vec2);
+        }
+    }
+
+    @FunctionalInterface
+    public interface Vec3Writer extends BiConsumer<ByteBuffer, Object> {
+        Vec3Writer INSTANCE = (b, value) -> {
+            Util.align(b, 16);
+            b.putFloat(value.x());
+            b.putFloat(value.y());
+            b.putFloat(value.z());
+        };
+        void write(ByteBuffer b, Vec3 value);
+
+        @Override
+        default void accept(ByteBuffer buffer, Object vec3) {
+            write(buffer, (Vec3) vec3);
+        }
+    }
+
+    @FunctionalInterface
+    public interface Vec4Writer extends BiConsumer<ByteBuffer, Object> {
+        Vec4Writer INSTANCE = (b, value) -> {
+            Util.align(b, 16);
+            b.putFloat(value.x());
+            b.putFloat(value.y());
+            b.putFloat(value.z());
+            b.putFloat(value.w());
+        };
+        void write(ByteBuffer b, Vec4 value);
+
+        default void accept(ByteBuffer buffer, Object vec4) {
+            write(buffer, (Vec4) vec4);
+        }
+    }
+
+    @FunctionalInterface
+    public interface Vec3iWriter extends BiConsumer<ByteBuffer, Object> {
+        Vec3iWriter INSTANCE = (b, value) -> {
+            Util.align(b, 16);
+            b.putInt(value.x());
+            b.putInt(value.y());
+            b.putInt(value.z());
+        };
+        void write(ByteBuffer b, Vec3i value);
+
+        default void accept(ByteBuffer buffer, Object vec3i) {
+            write(buffer, (Vec3i) vec3i);
+        }
     }
 }

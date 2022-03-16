@@ -5,14 +5,19 @@ import me.salamander.mallet.shaders.compiler.ShaderCompiler;
 import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import me.salamander.mallet.util.Util;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class EnumType extends MalletType{
     private final List<Field> fields = new ArrayList<>();
@@ -103,12 +108,38 @@ public class EnumType extends MalletType{
 
     @Override
     protected int getSize() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return 4;
     }
 
     @Override
     protected int getAlignment() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return 4;
+    }
+
+    @Override
+    protected void printLayout(StringBuilder sb, String indent) {
+        sb.append(indent);
+        sb.append(getName());
+        sb.append("Size: ").append(getSize());
+        sb.append(" Alignment: ").append(getAlignment());
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public  <T> T makeWriter(Class<T> itf) {
+        return (T) (BiConsumer<ByteBuffer, Enum<?>>) (buffer, value) -> {
+            Util.align(buffer, getAlignment());
+            buffer.putInt(value == null ? -1 : value.ordinal());
+        };
+    }
+
+    @Override
+    protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
+        bufferLoader.accept(mv);
+        objectLoader.accept(mv);
+
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Enum", "ordinal", "()I", false);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
     }
 
     @Override
@@ -168,6 +199,6 @@ public class EnumType extends MalletType{
 
     @Override
     public void checkNullability(StringBuilder glsl, Value value) {
-        super.checkNullability(glsl, value);
+        //TODO:
     }
 }

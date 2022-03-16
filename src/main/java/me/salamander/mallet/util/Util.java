@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.Hash;
 import org.objectweb.asm.Type;
 
 import java.lang.reflect.Field;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -107,6 +109,10 @@ public class Util {
         } else {
             return f.get(o);
         }
+    }
+
+    public static void align(Buffer buffer, int alignment) {
+        buffer.position(MathHelper.align(buffer.position(), alignment));
     }
 
     //Useful in debugging StackOverflowErrors
