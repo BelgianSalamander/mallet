@@ -82,7 +82,7 @@ public class StaticField implements Location, Value {
 
     @Override
     public Mutability getMutability(MutabilityValue varMutability) {
-        return Mutability.IMMUTABLE;
+        return Mutability.MUTABLE;
     }
 
     @Override

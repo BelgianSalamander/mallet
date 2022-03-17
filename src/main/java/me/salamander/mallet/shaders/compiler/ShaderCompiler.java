@@ -161,7 +161,7 @@ public class ShaderCompiler {
             boolean isInput = staticField.hasAnnotation(In.class);
             boolean isOutput = staticField.hasAnnotation(Out.class);
             boolean isUniform = staticField.hasAnnotation(Uniform.class);
-            boolean isBuffer = staticField.hasAnnotation(Buffer.class);
+            boolean isBuffer = staticField.hasAnnotation(ShaderStorageBlock.class);
 
             //Make sure only one of these annotations is present
             int numAnnotations = 0;
@@ -315,7 +315,7 @@ public class ShaderCompiler {
 
         glsl.append("buffer ");
 
-        String structName = "BufferStruct_" + id;
+        String structName = staticField.getFieldName();
         glsl.append(structName);
 
         glsl.append(" {\n");
@@ -327,17 +327,15 @@ public class ShaderCompiler {
         MalletType malletType = globalContext.getType(elementType);
 
         glsl.append(malletType.getName());
-        glsl.append(" value");
+        glsl.append(" ");
+        glsl.append(structName);
+        glsl.append("_value");
 
         if (type.getSort() == Type.ARRAY) {
             writeArrayDimensions(glsl, staticField, type);
         }
 
-        glsl.append(";\n} ");
-
-        glsl.append(staticField.getFieldName());
-
-        glsl.append(";\n");
+        glsl.append(";\n};\n");
     }
 
     private void writeArrayDimensions(StringBuilder glsl, StaticField staticField, Type type) {
@@ -859,9 +857,11 @@ public class ShaderCompiler {
             return;
         }
 
-        sb.append(field.getFieldName());
         if (buffers.contains(field)) {
-            sb.append(".value");
+            sb.append(field.getFieldName());
+            sb.append("_value");
+        } else {
+            sb.append(field.getFieldName());
         }
     }
 

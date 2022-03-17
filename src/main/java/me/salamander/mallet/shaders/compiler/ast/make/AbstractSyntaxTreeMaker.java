@@ -34,7 +34,7 @@ public class AbstractSyntaxTreeMaker {
         findContinues();
         findBreaks();
 
-        this.set.print(System.out);
+        //this.set.print(System.out);
 
         List<ASTNode> ast = this.set.getRoot().makeAST(cfg);
 
@@ -126,7 +126,7 @@ public class AbstractSyntaxTreeMaker {
     private void makeStatementSequences() {
         makeStatementSequences(this.set.getRoot());
 
-        this.set.print(System.out);
+        //this.set.print(System.out);
     }
 
     private void makeStatementSequences(SETNode setNode) {

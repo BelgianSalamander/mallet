@@ -153,20 +153,20 @@ public class JavaDecompiler {
             PossibleValuesTracker possibleValuesTracker = new PossibleValuesTracker();
             Analysis.analyze(possibleValuesTracker, cfg); //Discard results
 
-            results.print(System.out, cfg);
+            //results.print(System.out, cfg);
             changed = inlineValues(cfg, results, possibleValuesTracker);
-            System.out.println("\n");
+            //System.out.println("\n");
         }
 
         //Remove unneeded assignments
         System.out.println("Live variables:");
         AnalysisResults<LiveVarValue> liveVariableResults = Analysis.analyze(new LiveVariables(), cfg);
-        liveVariableResults.print(System.out, cfg);
+        //liveVariableResults.print(System.out, cfg);
         removeUnneededAssignments(cfg, liveVariableResults);
-        System.out.println("\n");
+        //System.out.println("\n");
 
         System.out.println("Final:");
-        cfg.print(System.out);
+        //cfg.print(System.out);
 
         checkMutability(cfg);
         return cfg;

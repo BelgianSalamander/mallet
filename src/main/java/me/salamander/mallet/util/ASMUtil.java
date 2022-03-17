@@ -130,7 +130,7 @@ public class ASMUtil {
         );
         constructorMethod.visitCode();
         constructorMethod.visitVarInsn(Opcodes.ALOAD, 0);
-        constructorMethod.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        constructorMethod.visitMethodInsn(Opcodes.INVOKESPECIAL, classNode.superName, "<init>", "()V", false);
         constructorMethod.visitInsn(Opcodes.RETURN);
     }
 

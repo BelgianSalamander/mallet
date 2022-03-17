@@ -55,7 +55,7 @@ public class MutabilitySemiLattice extends SemiLattice<MutabilityValue> {
             checkMethodCall(methodCallInstruction.getMethodCall(), value);
         }else if(instruction instanceof AssignmentInstruction assignment) {
             if(!ASMUtil.isPrimitive(assignment.getLocation().getType()) && !assignment.getLocation().canSet(value)){
-                throw new MutatingImmutableValueException("Assignment location is immutable");
+                throw new MutatingImmutableValueException("Assignment location is immutable. Error instruction: " + instruction);
             }
 
             Value val = assignment.getValue();

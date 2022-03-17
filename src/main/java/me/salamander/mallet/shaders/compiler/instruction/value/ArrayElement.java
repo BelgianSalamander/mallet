@@ -77,4 +77,9 @@ public class ArrayElement implements Location, Value {
     public Value getIndex() {
         return index;
     }
+
+    @Override
+    public String toString() {
+        return array.toString() + "[" + index.toString() + "]";
+    }
 }

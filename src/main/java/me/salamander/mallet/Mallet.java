@@ -1,5 +1,7 @@
 package me.salamander.mallet;
 
+import org.lwjgl.glfw.GLFWErrorCallback;
+
 import static org.lwjgl.opengl.GL45.*;
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -16,6 +18,9 @@ public class Mallet {
                 throw new IllegalStateException("Unable to initialize GLFW");
             }
             glInitialized.set(true);
+
+            //Error callback
+            GLFWErrorCallback.createPrint(System.err).set();
         }
     }
 }

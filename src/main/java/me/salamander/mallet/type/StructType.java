@@ -227,7 +227,7 @@ public class StructType extends MalletType {
     }
 
     @Override
-    protected int getAlignment() {
+    public int getAlignment() {
         return alignment;
     }
 

@@ -48,7 +48,7 @@ public abstract class MalletType {
     protected abstract void makeAny(StringBuilder sb, MalletContext context);
 
     public abstract int getSize();
-    protected abstract int getAlignment();
+    public abstract int getAlignment();
 
     protected abstract void printLayout(StringBuilder sb, String indent);
 
@@ -181,6 +181,7 @@ public abstract class MalletType {
                 }
 
                 if (!bound.isAssignableFrom(target)) {
+                    //TODO: Automatic boxing
                     throw new IllegalArgumentException("Type parameter mismatch for " + name + ": " + target + " is not assignable from " + bound);
                 }
 

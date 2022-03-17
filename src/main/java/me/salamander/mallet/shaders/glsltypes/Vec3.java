@@ -8,6 +8,14 @@ public record Vec3(float x, float y, float z) {
         this(v.x, v.y, v.z);
     }
 
+    public Vec3(float n) {
+        this(n, n, n);
+    }
+
+    public Vec3 mul(float u_multiplier) {
+        return new Vec3(x * u_multiplier, y * u_multiplier, z * u_multiplier);
+    }
+
     @ReturnMutable
     public Vector3f toVector3f() {
         return new Vector3f(x, y, z);

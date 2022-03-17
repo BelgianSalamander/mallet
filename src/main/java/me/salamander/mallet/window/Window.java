@@ -2,11 +2,14 @@ package me.salamander.mallet.window;
 
 import me.salamander.mallet.Mallet;
 import org.joml.Matrix4f;
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.GL;
+import org.lwjgl.system.MemoryStack;
 
 import java.awt.*;
+import java.nio.IntBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -386,6 +389,21 @@ public class Window {
 
     public long getHandle() {
         return windowHandle;
+    }
+
+    public String[] getSupportedExtensions(){
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            IntBuffer numExtensions = stack.mallocInt(1);
+            glGetIntegerv(GL_NUM_EXTENSIONS, numExtensions);
+
+            String[] extensions = new String[numExtensions.get(0)];
+
+            for (int i = 0; i < extensions.length; i++) {
+                extensions[i] = glGetStringi(GL_EXTENSIONS, i);
+            }
+
+            return extensions;
+        }
     }
 
     static public record ContentScale(float xScale, float yScale){

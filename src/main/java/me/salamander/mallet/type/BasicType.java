@@ -66,7 +66,7 @@ public abstract class BasicType extends MalletType {
     }
 
     @Override
-    protected int getAlignment() {
+    public int getAlignment() {
         return alignment;
     }
 
@@ -198,13 +198,13 @@ public abstract class BasicType extends MalletType {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "x", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "y", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
                     }
 
@@ -217,13 +217,13 @@ public abstract class BasicType extends MalletType {
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 4);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "<init>", "(FF)V", false);
                     }
@@ -250,19 +250,19 @@ public abstract class BasicType extends MalletType {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "x", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "y", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "z", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
                     }
 
@@ -275,19 +275,19 @@ public abstract class BasicType extends MalletType {
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 4);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 8);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "<init>", "(FFF)V", false);
                     }
@@ -316,26 +316,26 @@ public abstract class BasicType extends MalletType {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "x", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "y", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "z", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "w", "()F", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
-                mv.visitInsn(Opcodes.POP);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
@@ -344,25 +344,25 @@ public abstract class BasicType extends MalletType {
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 4);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 8);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 12);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getFloat", "(Ljava/nio/ByteBuffer;I)F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
 
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "<init>", "(FFFF)V", false);
                     }
@@ -393,19 +393,19 @@ public abstract class BasicType extends MalletType {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "x", "()I", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "y", "()I", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "z", "()I", false);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
                     }
 
@@ -415,19 +415,19 @@ public abstract class BasicType extends MalletType {
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getInt", "(Ljava/nio/ByteBuffer;I)I", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "(I)I", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 4);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getInt", "(Ljava/nio/ByteBuffer;I)I", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "(I)I", false);
 
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset + 8);
                         mv.visitInsn(Opcodes.IADD);
-                        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "getInt", "(Ljava/nio/ByteBuffer;I)I", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "(I)I", false);
 
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "<init>", "(III)V", false);
                     }

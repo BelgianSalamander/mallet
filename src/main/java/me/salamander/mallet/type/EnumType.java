@@ -108,7 +108,7 @@ public class EnumType extends MalletType{
     }
 
     @Override
-    protected int getAlignment() {
+    public int getAlignment() {
         return 4;
     }
 
