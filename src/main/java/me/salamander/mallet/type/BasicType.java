@@ -5,15 +5,15 @@ import me.salamander.mallet.shaders.glsltypes.Vec2;
 import me.salamander.mallet.shaders.glsltypes.Vec3;
 import me.salamander.mallet.shaders.glsltypes.Vec3i;
 import me.salamander.mallet.shaders.glsltypes.Vec4;
-import me.salamander.mallet.type.construct.ObjectConstructor;
 import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.FieldNode;
 
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -61,7 +61,7 @@ public abstract class BasicType extends MalletType {
     }
 
     @Override
-    protected int getSize() {
+    public int getSize() {
         return size;
     }
 
@@ -121,10 +121,11 @@ public abstract class BasicType extends MalletType {
                 bufferLoader.accept(mv);
                 objectLoader.accept(mv);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
+                mv.visitInsn(Opcodes.POP);
             }
 
             @Override
-            protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+            protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                 bufferLoader.accept(mv);
                 startPosLoader.accept(mv);
                 ASMUtil.visitIntConstant(mv, baseOffset);
@@ -139,10 +140,11 @@ public abstract class BasicType extends MalletType {
                 bufferLoader.accept(mv);
                 objectLoader.accept(mv);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
+                mv.visitInsn(Opcodes.POP);
             }
 
             @Override
-            protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+            protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                 bufferLoader.accept(mv);
                 startPosLoader.accept(mv);
                 ASMUtil.visitIntConstant(mv, baseOffset);
@@ -160,10 +162,11 @@ public abstract class BasicType extends MalletType {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putDouble", "(D)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
-                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
@@ -177,10 +180,11 @@ public abstract class BasicType extends MalletType {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "put", "(B)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
-                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
@@ -195,15 +199,17 @@ public abstract class BasicType extends MalletType {
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "x", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
-                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                         mv.visitTypeInsn(Opcodes.NEW, Vec2.class.getName().replace('.', '/'));
                         mv.visitInsn(Opcodes.DUP);
 
@@ -245,20 +251,23 @@ public abstract class BasicType extends MalletType {
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "x", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "z", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
-                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                         mv.visitTypeInsn(Opcodes.NEW, Vec3.class.getName().replace('.', '/'));
                         mv.visitInsn(Opcodes.DUP);
 
@@ -308,25 +317,29 @@ public abstract class BasicType extends MalletType {
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "x", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "z", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "w", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putFloat", "(Ljava/nio/ByteBuffer;F)Ljava/nio/ByteBuffer;", false);
+                mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
-                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
@@ -381,20 +394,23 @@ public abstract class BasicType extends MalletType {
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "x", "()I", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "y", "()I", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
                         mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3i.class.getName().replace('.', '/'), "z", "()I", false);
                         mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/nio/ByteBuffer", "putInt", "(Ljava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", false);
+                        mv.visitInsn(Opcodes.POP);
                     }
 
                     @Override
-                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+                    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
                         bufferLoader.accept(mv);
                         startPosLoader.accept(mv);
                         ASMUtil.visitIntConstant(mv, baseOffset);
@@ -423,15 +439,12 @@ public abstract class BasicType extends MalletType {
 
                     @Override
                     public int getOffsetOfField(String field) {
-                        if (field.equals("x")) {
-                            return 0;
-                        } else if (field.equals("y")) {
-                            return 4;
-                        } else if (field.equals("z")) {
-                            return 8;
-                        } else {
-                            throw new IllegalArgumentException("Unknown field: " + field);
-                        }
+                        return switch (field) {
+                            case "x" -> 0;
+                            case "y" -> 4;
+                            case "z" -> 8;
+                            default -> throw new IllegalArgumentException("Unknown field: " + field);
+                        };
                     }
                 },
         };

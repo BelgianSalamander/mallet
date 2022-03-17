@@ -21,13 +21,13 @@ public class UnsafeConstructor implements ObjectConstructor {
     public UnsafeConstructor(Class<?> clazz) {
         Field[] fields = clazz.getDeclaredFields();
 
-        this.fields = Arrays.stream(fields).filter(field -> Modifier.isStatic(field.getModifiers())).toArray(Field[]::new);
+        this.fields = Arrays.stream(fields).filter(field -> !Modifier.isStatic(field.getModifiers())).toArray(Field[]::new);
         this.type = Type.getType(clazz);
 
-        fieldOffsets = new long[fields.length];
+        fieldOffsets = new long[this.fields.length];
 
-        for (int i = 0; i < fields.length; i++) {
-            fieldOffsets[i] = Util.UNSAFE.objectFieldOffset(fields[i]);
+        for (int i = 0; i < this.fields.length; i++) {
+            fieldOffsets[i] = Util.UNSAFE.objectFieldOffset(this.fields[i]);
         }
     }
 

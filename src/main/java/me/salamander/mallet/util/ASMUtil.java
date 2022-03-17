@@ -112,7 +112,7 @@ public class ASMUtil {
     }
 
     public static byte[] write(ClassNode classNode) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
         classNode.accept(cw);
 

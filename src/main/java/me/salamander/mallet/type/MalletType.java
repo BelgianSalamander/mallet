@@ -10,7 +10,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.FieldNode;
 
 import java.lang.reflect.*;
 import java.nio.ByteBuffer;
@@ -47,7 +47,7 @@ public abstract class MalletType {
 
     protected abstract void makeAny(StringBuilder sb, MalletContext context);
 
-    protected abstract int getSize();
+    public abstract int getSize();
     protected abstract int getAlignment();
 
     protected abstract void printLayout(StringBuilder sb, String indent);
@@ -180,7 +180,7 @@ public abstract class MalletType {
                     throw new IllegalArgumentException("Could not find class " + targetType.getJavaType().getClassName());
                 }
 
-                if (!target.isAssignableFrom(bound)) {
+                if (!bound.isAssignableFrom(target)) {
                     throw new IllegalArgumentException("Type parameter mismatch for " + name + ": " + target + " is not assignable from " + bound);
                 }
 
@@ -218,7 +218,6 @@ public abstract class MalletType {
                 new String[]{"java/util/function/BiConsumer"}
         );
 
-        ASMUtil.createDefaultConstructor(classNode);
 
         //Reader delegator
         createReaderDelegator(itf, name, classNode);
@@ -247,6 +246,8 @@ public abstract class MalletType {
         //Load callback
         mv.visitVarInsn(Opcodes.ALOAD, 2);
 
+        Map<Object, FieldNode> constants = new HashMap<>();
+
         //Create params
         for (int i = 0; i < args.length; i++) {
             MalletType type = types[i];
@@ -257,7 +258,9 @@ public abstract class MalletType {
                     offset,
                     (mv1) -> mv1.visitVarInsn(Opcodes.ALOAD, 1),
                     (mv1) -> mv1.visitVarInsn(Opcodes.ILOAD, 3),
-                    4
+                    4,
+                    constants,
+                    name
             );
         }
 
@@ -279,10 +282,53 @@ public abstract class MalletType {
 
         mv.visitInsn(Opcodes.RETURN);
 
+        //Create constructor
+        Map.Entry<Object, FieldNode>[] entries = constants.entrySet().toArray(new Map.Entry[0]);
+        Type[] constantTypes = new Type[entries.length];
+        StringBuilder constructorDesc = new StringBuilder();
+
+        constructorDesc.append("(");
+        for (int i = 0; i < entries.length; i++) {
+            Type type = Type.getType(entries[i].getKey().getClass());
+            constantTypes[i] = type;
+            constructorDesc.append(type.getDescriptor());
+        }
+        constructorDesc.append(")V");
+
+        MethodVisitor constructor = classNode.visitMethod(
+                Opcodes.ACC_PUBLIC,
+                "<init>",
+                constructorDesc.toString(),
+                null,
+                null
+        );
+
+        constructor.visitCode();
+        constructor.visitVarInsn(Opcodes.ALOAD, 0);
+        constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+
+        int varIndex = 1;
+        for (int i = 0; i < entries.length; i++) {
+            constructor.visitVarInsn(Opcodes.ALOAD, 0);
+            constructor.visitVarInsn(Opcodes.ALOAD, varIndex);
+            constructor.visitFieldInsn(Opcodes.PUTFIELD, name, entries[i].getValue().name, entries[i].getValue().desc);
+            varIndex += types[i].getSize();
+        }
+
+        constructor.visitInsn(Opcodes.RETURN);
+
+        Object[] constructorArgs = new Object[entries.length];
+
+        int i = 0;
+        for (Map.Entry<Object, FieldNode> entry : entries) {
+            classNode.fields.add(entry.getValue());
+            constructorArgs[i++] = entry.getKey();
+        }
+
         Class<?> clazz = ASMUtil.load(this.getClass().getClassLoader(), classNode)[0];
         try {
-            Constructor<?> constructor = clazz.getConstructors()[0];
-            return (BiConsumer<ByteBuffer, T>) constructor.newInstance();
+            Constructor<?> reflectionConstructor = clazz.getConstructors()[0];
+            return (BiConsumer<ByteBuffer, T>) reflectionConstructor.newInstance(constructorArgs);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -317,8 +363,10 @@ public abstract class MalletType {
      * @param baseOffset
      * @param bufferLoader
      * @param baseVarIndex
+     * @param constants
+     * @param className
      */
-    protected abstract void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex);
+    protected abstract void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className);
 
     public void writeGLSLForGetField(StringBuilder sb, ObjectField field, ShaderCompiler shaderCompiler) {
         field.getObject().writeGLSL(sb, context, shaderCompiler);

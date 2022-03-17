@@ -113,7 +113,7 @@ public class Util {
         }
     }
 
-    public static void align(Buffer buffer, int alignment) {
+    public static void align(ByteBuffer buffer, int alignment) {
         buffer.position(MathHelper.align(buffer.position(), alignment));
     }
 

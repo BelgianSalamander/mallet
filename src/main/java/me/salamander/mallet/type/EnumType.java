@@ -4,34 +4,32 @@ import me.salamander.mallet.MalletContext;
 import me.salamander.mallet.shaders.compiler.ShaderCompiler;
 import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
+import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.Util;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.FieldNode;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class EnumType extends MalletType{
     private final List<Field> fields = new ArrayList<>();
-    private final Class<? extends Enum<?>> clazz;
+    private final Class<?> clazz;
+    private final Object[] values;
 
-    public EnumType(Type type, MalletContext context) {
+    public EnumType(Type type, Object[] values, MalletContext context) {
         super(type, context);
 
         Class<?> clazz = Util.getClass(type);
         this.clazz = (Class<? extends Enum<?>>) clazz;
-
-        if(!clazz.isEnum()) {
-            throw new IllegalArgumentException("Type " + type + " is not an enum");
-        }
+        this.values = values;
 
         while (clazz != null) {
             for (Field field : clazz.getDeclaredFields()) {
@@ -66,10 +64,8 @@ public class EnumType extends MalletType{
             sb.append(this.getArrayName(field));
             sb.append(" = {\n");
 
-            Enum<?>[] constants = clazz.getEnumConstants();
-
-            for (int i = 0; i < constants.length; i++) {
-                Enum<?> constant = constants[i];
+            for (int i = 0; i < values.length; i++) {
+                Object constant = values[i];
 
                 if (i > 0) {
                     sb.append(",\n");
@@ -107,7 +103,7 @@ public class EnumType extends MalletType{
     }
 
     @Override
-    protected int getSize() {
+    public int getSize() {
         return 4;
     }
 
@@ -138,20 +134,53 @@ public class EnumType extends MalletType{
         bufferLoader.accept(mv);
         objectLoader.accept(mv);
 
-        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Enum", "ordinal", "()I", false);
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/Enum", "ordinal", "()I", false);
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putInt", "(I)Ljava/nio/ByteBuffer;", false);
+        mv.visitInsn(Opcodes.POP);
     }
 
     @Override
-    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazz.getName().replace('.', '/'), "values", "()[" + clazz.getName().replace('.', '/'), false);
+    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
+        //Get values array
+        FieldNode field = constants.computeIfAbsent(this.values, f -> {
+            String name = "const_" + constants.size();
+            return new FieldNode(Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL, name, "[" + this.getJavaType().getDescriptor(), null, null);
+        });
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        //Stack: [this]
+        mv.visitFieldInsn(Opcodes.GETFIELD, className, field.name, field.desc);
+        //Stack: [values]
+        mv.visitVarInsn(Opcodes.ASTORE, baseVarIndex);
+        //Stack: []
 
+        //Get ordinal
         bufferLoader.accept(mv);
         startPosLoader.accept(mv);
+        //Stack: [buffer, startPos]
+        ASMUtil.visitIntConstant(mv, baseOffset);
+        //Stack: [buffer, startPos, baseOffset]
         mv.visitInsn(Opcodes.IADD);
-        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "()I", false);
+        //Stack: [buffer, startPos + baseOffset]
+        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "(I)I", false);
+        //Stack: [ordinal]
+        mv.visitVarInsn(Opcodes.ISTORE, baseVarIndex + 1);
+        //Stack: []
 
+        //Get value
+        Label notNull = new Label();
+        Label end = new Label();
+        mv.visitVarInsn(Opcodes.ILOAD, baseVarIndex + 1);
+        mv.visitInsn(Opcodes.ICONST_M1);
+        mv.visitJumpInsn(Opcodes.IF_ICMPNE, notNull);
+        mv.visitInsn(Opcodes.ACONST_NULL);
+        mv.visitJumpInsn(Opcodes.GOTO, end);
+
+        mv.visitLabel(notNull);
+        mv.visitVarInsn(Opcodes.ALOAD, baseVarIndex);
+        mv.visitVarInsn(Opcodes.ILOAD, baseVarIndex + 1);
         mv.visitInsn(Opcodes.AALOAD);
+
+        mv.visitLabel(end);
     }
 
     @Override
@@ -226,6 +255,10 @@ public class EnumType extends MalletType{
 
     @Override
     public void checkNullability(StringBuilder glsl, Value value) {
-        //TODO:
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    public static EnumType of(Class<? extends Enum<?>> clazz, MalletContext context) {
+        return new EnumType(Type.getType(clazz), clazz.getEnumConstants(), context);
     }
 }

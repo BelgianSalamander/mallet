@@ -26,6 +26,8 @@ public class MalletContext {
     private final Map<String, ClassNode> cachedClasses = new HashMap<>();
     private final Map<Type, MalletType> types = new HashMap<>();
 
+    private final Set<Type> beingCreated = new HashSet<>();
+
     public MalletContext(){
         addDefaultResolvers();
         addDefaultTypes();
@@ -124,14 +126,28 @@ public class MalletContext {
     }
 
     public MalletType getType(Type type) {
-        return types.computeIfAbsent(type, this::makeType);
+        if (types.containsKey(type)) {
+            return types.get(type);
+        }
+
+        if (beingCreated.contains(type)) {
+            throw new RuntimeException("Cyclic type dependency: " + type);
+        }
+
+        beingCreated.add(type);
+
+        this.types.put(type, makeType(type));
+
+        beingCreated.remove(type);
+
+        return types.get(type);
     }
 
     private MalletType makeType(Type type) {
         Class<?> clazz = Util.getClass(type);
 
         if (Enum.class.isAssignableFrom(clazz)) {
-            return new EnumType(type, this);
+            return EnumType.of((Class<? extends Enum<?>>) clazz, this);
         } else {
             return new StructType(type, this);
         }

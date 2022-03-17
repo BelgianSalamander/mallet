@@ -11,6 +11,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldNode;
 
 import java.lang.reflect.*;
 import java.nio.ByteBuffer;
@@ -26,6 +27,9 @@ public class StructType extends MalletType {
     private final boolean nullable;
     private int size, alignment;
     private final int[] offsets;
+
+    private final Map<String, Consumer<MethodVisitor>> fieldReaders = new HashMap<>();
+
     public ObjectConstructor constructor;
 
     private BiConsumer<ByteBuffer, Object> cachedWriter = null;
@@ -51,6 +55,10 @@ public class StructType extends MalletType {
         this.fields = fields;
         this.nullable = ctx.getAnnotations(baseClass).hasAnnotation(NullableType.class);
         this.offsets = new int[fields.size() + (nullable ? 1 : 0)];
+
+        for (Field field : this.fields) {
+            fieldReaders.put(field.getName(), (mv) -> ASMUtil.visitField(mv, field));
+        }
 
         calculateLayout();
     }
@@ -214,7 +222,7 @@ public class StructType extends MalletType {
     }
 
     @Override
-    protected int getSize() {
+    public int getSize() {
         return size;
     }
 
@@ -334,6 +342,7 @@ public class StructType extends MalletType {
         ASMUtil.visitIntConstant(mv, getSize());
         mv.visitInsn(Opcodes.IADD);
         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "position", "(I)Ljava/nio/Buffer;", false);
+        mv.visitInsn(Opcodes.POP);
 
         mv.visitInsn(Opcodes.RETURN);
         mv.visitLabel(end);
@@ -411,19 +420,21 @@ public class StructType extends MalletType {
 
             bufferLoader.accept(mv);
             mv.visitInsn(Opcodes.ICONST_0);
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putByte", "(B)Ljava/nio/ByteBuffer;", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "put", "(B)Ljava/nio/ByteBuffer;", false);
+            mv.visitInsn(Opcodes.POP);
             mv.visitJumpInsn(Opcodes.GOTO, end);
 
             mv.visitLabel(isNull);
             bufferLoader.accept(mv);
             mv.visitInsn(Opcodes.ICONST_1);
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putByte", "(B)Ljava/nio/ByteBuffer;", false);
-            bufferLoader.accept(mv);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "put", "(B)Ljava/nio/ByteBuffer;", false);
             mv.visitVarInsn(Opcodes.ILOAD, bufferStartPosIndex);
             ASMUtil.visitIntConstant(mv, getSize());
             mv.visitInsn(Opcodes.IADD);
             mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "position", "(I)Ljava/nio/ByteBuffer;", false);
+            mv.visitInsn(Opcodes.POP);
             mv.visitInsn(Opcodes.RETURN);
+            mv.visitLabel(end);
 
             currPosition += 1;
 
@@ -453,18 +464,20 @@ public class StructType extends MalletType {
                 ASMUtil.visitIntConstant(mv, offset);
                 mv.visitInsn(Opcodes.IADD);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "position", "(I)Ljava/nio/ByteBuffer;", false);
+                mv.visitInsn(Opcodes.POP);
                 currPosition = offset;
             }
 
             //Get field
             objectLoader.accept(mv);
-            ASMUtil.visitField(mv, field);
+            //ASMUtil.visitField(mv, field);
+            fieldReaders.get(field.getName()).accept(mv);
             mv.visitVarInsn(objectType.getOpcode(Opcodes.ISTORE), fieldVarIndex);
 
             int loadOpcode = objectType.getOpcode(Opcodes.ILOAD);
 
             //Write field
-            objectMalletType.makeWriterCode(mv, bufferLoader, mv1 -> mv1.visitVarInsn(loadOpcode, fieldVarIndex), fieldVarIndex);
+            objectMalletType.makeWriterCode(mv, bufferLoader, mv1 -> mv1.visitVarInsn(loadOpcode, fieldVarIndex), baseVarIndex);
             currPosition += objectMalletType.getSize();
 
             mv.visitLabel(fieldEnd);
@@ -474,16 +487,27 @@ public class StructType extends MalletType {
     }
 
     @Override
-    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex) {
+    protected void makeReaderCode(MethodVisitor mv, int baseOffset, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> startPosLoader, int baseVarIndex, Map<Object, FieldNode> constants, String className) {
+        Label end = new Label();
+
+        if (nullable) {
+            Label isNotNull = new Label();
+
+            bufferLoader.accept(mv);
+            startPosLoader.accept(mv);
+
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "get", "(I)B", false);
+            mv.visitJumpInsn(Opcodes.IFEQ, isNotNull);
+
+            mv.visitInsn(Opcodes.ACONST_NULL);
+            mv.visitJumpInsn(Opcodes.GOTO, end);
+
+            mv.visitLabel(isNotNull);
+        }
+
         for (String field : this.constructor.fieldsUsed()) {
             //Find offset
-            int offset = -1;
-            for (int i = 0; i < fields.size(); i++) {
-                if (fields.get(i).getName().equals(field)) {
-                    offset = offsets[i];
-                    break;
-                }
-            }
+            int offset = this.getOffsetOfField(field);
 
             if (offset == -1) {
                 throw new RuntimeException("Could not find field " + field + " in " + this.getName());
@@ -496,11 +520,15 @@ public class StructType extends MalletType {
                     baseOffset + offset,
                     bufferLoader,
                     startPosLoader,
-                    baseVarIndex
+                    baseVarIndex,
+                    constants,
+                    className
             );
         }
 
         this.constructor.construct(mv, baseVarIndex);
+
+        mv.visitLabel(end);
     }
 
     @Override
@@ -539,7 +567,7 @@ public class StructType extends MalletType {
     public int getOffsetOfField(String field) {
         for (int i = 0; i < fields.size(); i++) {
             if (fields.get(i).getName().equals(field)) {
-                return offsets[i];
+                return offsets[i + (nullable ? 1 : 0)];
             }
         }
 
@@ -548,5 +576,9 @@ public class StructType extends MalletType {
 
     public List<Field> getFields() {
         return fields;
+    }
+
+    public void putFieldReader(String field, Consumer<MethodVisitor> reader) {
+        fieldReaders.put(field, reader);
     }
 }
