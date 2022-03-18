@@ -1,6 +1,7 @@
 package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
+import me.salamander.mallet.globject.vao.VAOLayout;
 import me.salamander.mallet.shaders.compiler.ShaderCompiler;
 import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
@@ -256,6 +257,11 @@ public class EnumType extends MalletType{
     @Override
     public void checkNullability(StringBuilder glsl, Value value) {
         throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+        throw new UnsupportedOperationException("Enums cannot be used in vertex shader inputs!");
     }
 
     public static EnumType of(Class<? extends Enum<?>> clazz, MalletContext context) {

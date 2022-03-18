@@ -4,12 +4,17 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import me.salamander.mallet.MalletContext;
 import me.salamander.mallet.globject.buffer.BufferObject;
+import me.salamander.mallet.shaders.compiler.ShaderCompiler;
 import me.salamander.mallet.shaders.glsltypes.Vec2;
 import me.salamander.mallet.shaders.glsltypes.Vec3;
 import me.salamander.mallet.shaders.glsltypes.Vec3i;
 import me.salamander.mallet.shaders.glsltypes.Vec4;
 import me.salamander.mallet.shaders.program.annotation.ShaderStorageBufferBinder;
 import me.salamander.mallet.shaders.program.annotation.UniformSetter;
+import me.salamander.mallet.shaders.shader.ComputeShader;
+import me.salamander.mallet.shaders.shader.FragmentShader;
+import me.salamander.mallet.shaders.shader.Shader;
+import me.salamander.mallet.shaders.shader.VertexShader;
 import me.salamander.mallet.util.ASMUtil;
 import me.salamander.mallet.util.AnnotationList;
 import me.salamander.mallet.util.GLUtil;
@@ -152,6 +157,32 @@ public class ShaderProgram {
         return program;
     }
 
+    @SafeVarargs
+    public static <T extends ShaderProgram> T create(Class<T> template, MalletContext context, Class<? extends Shader>... shaders) {
+        String[] args = new String[shaders.length * 2];
+
+        for (int i = 0; i < shaders.length; i++) {
+            String type;
+            if (VertexShader.class.isAssignableFrom(shaders[i])) {
+                type = VERTEX_SHADER;
+            } else if (FragmentShader.class.isAssignableFrom(shaders[i])) {
+                type = FRAGMENT_SHADER;
+            } else if (ComputeShader.class.isAssignableFrom(shaders[i])) {
+                type = COMPUTE_SHADER;
+            } else {
+                throw new IllegalArgumentException("Unknown shader type: " + shaders[i]);
+            }
+
+            ShaderCompiler compiler = new ShaderCompiler(context, shaders[i]);
+            args[i * 2] = type;
+            String source = args[i * 2 + 1] = compiler.compile();
+
+            System.out.println(type + ":\n" + source);
+        }
+
+        return create(template, context, args);
+    }
+
     public static <T extends ShaderProgram> T create(Class<T> template, MalletContext context, String... args) {
         int program = compileSources(args);
 
@@ -283,59 +314,59 @@ public class ShaderProgram {
         } else if (uniformClass == Vec2.class) {
             mv.visitInsn(Opcodes.DUP);
             //Stack: [location, vec, vec]
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec2", "x", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec2", "x", "()F", false);
             //Stack: [location, vec, x]
             mv.visitInsn(Opcodes.SWAP);
             //Stack: [location, x, vec]
 
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec2", "y", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec2", "y", "()F", false);
             //Stack: [location, x, y]
 
             mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/lwjgl/opengl/GL20", "glUniform2f", "(IFF)V", false);
         } else if (uniformClass == Vec3.class) {
             mv.visitInsn(Opcodes.DUP);
             //Stack: [location, vec, vec]
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec3", "x", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec3", "x", "()F", false);
             //Stack: [location, vec, x]
             mv.visitInsn(Opcodes.SWAP);
             //Stack: [location, x, vec]
 
             mv.visitInsn(Opcodes.DUP);
             //Stack: [location, x, vec, vec]
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec3", "y", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec3", "y", "()F", false);
             //Stack: [location, x, vec, y]
             mv.visitInsn(Opcodes.SWAP);
             //Stack: [location, x, y, vec]
 
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec3", "z", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec3", "z", "()F", false);
             //Stack: [location, x, y, z]
 
             mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/lwjgl/opengl/GL20", "glUniform3f", "(IFFF)V", false);
         } else if (uniformClass == Vec4.class) {
             mv.visitInsn(Opcodes.DUP);
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "x", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "x", "()F", false);
             mv.visitInsn(Opcodes.SWAP);
 
             mv.visitInsn(Opcodes.DUP);
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "y", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "y", "()F", false);
             mv.visitInsn(Opcodes.SWAP);
 
             mv.visitInsn(Opcodes.DUP);
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "z", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "z", "()F", false);
             mv.visitInsn(Opcodes.SWAP);
 
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "w", "()F", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec4", "w", "()F", false);
             mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/lwjgl/opengl/GL20", "glUniform4f", "(IFFFF)V", false);
         } else if (uniformClass == Vec3i.class) {
             mv.visitInsn(Opcodes.DUP);
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec3i", "x", "()I", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec3i", "x", "()I", false);
             mv.visitInsn(Opcodes.SWAP);
 
             mv.visitInsn(Opcodes.DUP);
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec3i", "y", "()I", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec3i", "y", "()I", false);
             mv.visitInsn(Opcodes.SWAP);
 
-            mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "me/salamander/mallet/shaders/glsltypes/Vec3i", "z", "()I", false);
+            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "me/salamander/mallet/shaders/glsltypes/Vec3i", "z", "()I", false);
             mv.visitMethodInsn(Opcodes.INVOKESTATIC, "org/lwjgl/opengl/GL20", "glUniform3i", "(IIII)V", false);
         } else {
             throw new RuntimeException("Unsupported uniform type: " + uniformClass.getName());

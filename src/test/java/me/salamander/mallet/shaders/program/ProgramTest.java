@@ -60,6 +60,8 @@ public class ProgramTest {
         Vec3[] input = new Vec3[TEST_SIZE * LOCAL_SIZE_X];
         Vec3[] expectedOutput = new Vec3[TEST_SIZE * LOCAL_SIZE_X];
 
+        BiConsumer<ByteBuffer, Consumer> reader = vec3.makeReader(Consumer.class, "this");
+
         for (int i = 0; i < NUM_TESTS; i++) {
             float multiplier = random.nextFloat() * 1000 - 500;
             program.setMultiplier(multiplier);
@@ -76,7 +78,6 @@ public class ProgramTest {
 
             ByteBuffer generated = bufferObject.read(0, size * 16);
 
-            BiConsumer<ByteBuffer, Consumer> reader = vec3.makeReader(Consumer.class, "this");
             for (int j = 0; j < expectedOutput.length; j++) {
                 int finalJ = j;
 

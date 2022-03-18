@@ -13,7 +13,7 @@ public class JavaStyleConstructor implements ObjectConstructor {
     private final Type[] types;
     private final String desc;
 
-    private JavaStyleConstructor(Class<?> clazz, String... fields) {
+    public JavaStyleConstructor(Class<?> clazz, String... fields) {
         this.fields = fields;
         this.clazz = clazz;
 

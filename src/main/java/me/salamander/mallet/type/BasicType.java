@@ -1,6 +1,7 @@
 package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
+import me.salamander.mallet.globject.vao.VAOLayout;
 import me.salamander.mallet.shaders.glsltypes.Vec2;
 import me.salamander.mallet.shaders.glsltypes.Vec3;
 import me.salamander.mallet.shaders.glsltypes.Vec3i;
@@ -132,6 +133,11 @@ public abstract class BasicType extends MalletType {
                 mv.visitInsn(Opcodes.IADD);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getInt", "(I)I", false);
             }
+
+            @Override
+            public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                builder.addInts(1, pos);
+            }
         };
 
         BasicType float_ = new BasicType(Type.FLOAT_TYPE, "float", "", "0.0f", context, 4, 4, FloatWriter.INSTANCE, true){
@@ -150,6 +156,11 @@ public abstract class BasicType extends MalletType {
                 ASMUtil.visitIntConstant(mv, baseOffset);
                 mv.visitInsn(Opcodes.IADD);
                 mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getFloat", "(I)F", false);
+            }
+
+            @Override
+            public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                builder.addFloats(1, pos);
             }
         };
 
@@ -173,6 +184,11 @@ public abstract class BasicType extends MalletType {
                         mv.visitInsn(Opcodes.IADD);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "getDouble", "(I)D", false);
                     }
+
+                    @Override
+                    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                        builder.addDoubles(1, pos);
+                    }
                 },
                 new BasicType(Type.BOOLEAN_TYPE, "bool", "", "false", context, 1, 1, BooleanWriter.INSTANCE, true){
                     @Override
@@ -191,19 +207,24 @@ public abstract class BasicType extends MalletType {
                         mv.visitInsn(Opcodes.IADD);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "get", "(I)B", false);
                     }
+
+                    @Override
+                    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                        builder.addBytes(1, pos);
+                    }
                 },
                 new BasicType(Type.getType(Vec2.class), "vec2", "", "vec2(0.0f, 0.0f)", context, 8, 8, Vec2Writer.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "x", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec2.class.getName().replace('.', '/'), "x", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec2.class.getName().replace('.', '/'), "y", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec2.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
                     }
@@ -243,25 +264,30 @@ public abstract class BasicType extends MalletType {
                             throw new IllegalArgumentException("Unknown field: " + field);
                         }
                     }
+
+                    @Override
+                    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                        builder.addFloats(2, pos);
+                    }
                 },
                 new BasicType(Type.getType(Vec3.class), "vec3", "", "vec3(0.0f, 0.0f, 0.0f)", context, 16, 16, Vec3Writer.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "x", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec3.class.getName().replace('.', '/'), "x", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "y", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec3.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec3.class.getName().replace('.', '/'), "z", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec3.class.getName().replace('.', '/'), "z", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
                     }
@@ -309,31 +335,36 @@ public abstract class BasicType extends MalletType {
                             throw new IllegalArgumentException("Unknown field: " + field);
                         }
                     }
+
+                    @Override
+                    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                        builder.addFloats(3, pos);
+                    }
                 },
                 new BasicType(Type.getType(Vec4.class), "vec4", "", "vec4(0.0f, 0.0f, 0.0f, 0.0f)", context, 16, 16, Vec4Writer.INSTANCE, false) {
                     @Override
                     protected void makeWriterCode(MethodVisitor mv, Consumer<MethodVisitor> bufferLoader, Consumer<MethodVisitor> objectLoader, int baseVarIndex) {
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "x", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec4.class.getName().replace('.', '/'), "x", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "y", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec4.class.getName().replace('.', '/'), "y", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "z", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec4.class.getName().replace('.', '/'), "z", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
 
                         bufferLoader.accept(mv);
                         objectLoader.accept(mv);
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, Vec4.class.getName().replace('.', '/'), "w", "()F", false);
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, Vec4.class.getName().replace('.', '/'), "w", "()F", false);
                         mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/nio/ByteBuffer", "putFloat", "(F)Ljava/nio/ByteBuffer;", false);
                         mv.visitInsn(Opcodes.POP);
                     }
@@ -385,6 +416,11 @@ public abstract class BasicType extends MalletType {
                         } else {
                             throw new IllegalArgumentException("Unknown field: " + field);
                         }
+                    }
+
+                    @Override
+                    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                        builder.addFloats(4, pos);
                     }
                 },
                 new BasicType(Type.getType(Vec3i.class), "ivec3", "", "ivec3(0, 0, 0)", context, 16, 16, Vec3iWriter.INSTANCE, false) {
@@ -445,6 +481,11 @@ public abstract class BasicType extends MalletType {
                             case "z" -> 8;
                             default -> throw new IllegalArgumentException("Unknown field: " + field);
                         };
+                    }
+
+                    @Override
+                    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+                        builder.addInts(3, pos);
                     }
                 },
         };

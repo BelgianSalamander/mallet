@@ -1,7 +1,9 @@
 package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
+import me.salamander.mallet.globject.vao.VAOLayout;
 import me.salamander.mallet.shaders.annotation.NullableType;
+import me.salamander.mallet.type.construct.JavaStyleConstructor;
 import me.salamander.mallet.type.construct.ObjectConstructor;
 import me.salamander.mallet.type.construct.UnsafeConstructor;
 import me.salamander.mallet.util.ASMUtil;
@@ -39,7 +41,6 @@ public class StructType extends MalletType {
 
         List<Field> fields = new ArrayList<>();
         Class<?> clazz = Util.getClass(type);
-        this.constructor = new UnsafeConstructor(clazz);
         Class<?> baseClass = clazz;
         while (clazz != null) {
             for (Field field : clazz.getDeclaredFields()) {
@@ -52,15 +53,36 @@ public class StructType extends MalletType {
             clazz = clazz.getSuperclass();
         }
 
+        this.constructor = makeConstructor(baseClass, fields);
+
         this.fields = fields;
         this.nullable = ctx.getAnnotations(baseClass).hasAnnotation(NullableType.class);
         this.offsets = new int[fields.size() + (nullable ? 1 : 0)];
 
-        for (Field field : this.fields) {
-            fieldReaders.put(field.getName(), (mv) -> ASMUtil.visitField(mv, field));
+        if (!Record.class.isAssignableFrom(baseClass)) {
+            for (Field field : this.fields) {
+                fieldReaders.put(field.getName(), (mv) -> ASMUtil.visitField(mv, field));
+            }
+        } else {
+            for (Field field : this.fields) {
+                fieldReaders.put(field.getName(), (mv) -> mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, baseClass.getName().replace('.', '/'), field.getName(), "()" + field.getType().descriptorString(), false));
+            }
         }
 
         calculateLayout();
+    }
+
+    private ObjectConstructor makeConstructor(Class<?> clazz, List<Field> fields) {
+        if (Record.class.isAssignableFrom(clazz)) {
+            String[] fieldNames = new String[fields.size()];
+            for (int i = 0; i < fields.size(); i++) {
+                fieldNames[i] = fields.get(i).getName();
+            }
+
+            return new JavaStyleConstructor(clazz, fieldNames);
+        } else {
+            return new UnsafeConstructor(clazz);
+        }
     }
 
     private void calculateLayout() {
@@ -572,6 +594,21 @@ public class StructType extends MalletType {
         }
 
         throw new RuntimeException("Could not find field " + field + " in " + this.getName());
+    }
+
+    @Override
+    public void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos) {
+        int fieldIndex = 0;
+
+        if (nullable) {
+            builder.addBytes(1, pos);
+            fieldIndex++;
+        }
+
+        for (Field field : fields) {
+            MalletType type = context.getType(Type.getType(field.getType()));
+            type.addToLayout(builder, pos + offsets[fieldIndex]);
+        }
     }
 
     public List<Field> getFields() {

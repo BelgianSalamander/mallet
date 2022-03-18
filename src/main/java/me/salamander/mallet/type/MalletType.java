@@ -1,10 +1,12 @@
 package me.salamander.mallet.type;
 
 import me.salamander.mallet.MalletContext;
+import me.salamander.mallet.globject.vao.VAOLayout;
 import me.salamander.mallet.shaders.compiler.ShaderCompiler;
 import me.salamander.mallet.shaders.compiler.instruction.value.ObjectField;
 import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import me.salamander.mallet.util.ASMUtil;
+import me.salamander.mallet.util.MathHelper;
 import me.salamander.mallet.util.Util;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -399,4 +401,14 @@ public abstract class MalletType {
     public void checkNullability(StringBuilder glsl, Value value) {
         throw new UnsupportedOperationException("checkNullability not implemented for " + this.getClass().getSimpleName());
     }
+
+    public VAOLayout createLayout() {
+        VAOLayout.SingleBufferBuilder builder = new VAOLayout.SingleBufferBuilder(MathHelper.align(getSize(), getAlignment()));
+
+        this.addToLayout(builder, 0);
+
+        return builder.build();
+    }
+
+    public abstract void addToLayout(VAOLayout.SingleBufferBuilder builder, int pos);
 }

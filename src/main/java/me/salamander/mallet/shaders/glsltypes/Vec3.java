@@ -12,8 +12,12 @@ public record Vec3(float x, float y, float z) {
         this(n, n, n);
     }
 
-    public Vec3 mul(float u_multiplier) {
-        return new Vec3(x * u_multiplier, y * u_multiplier, z * u_multiplier);
+    public Vec3 mul(float n) {
+        return new Vec3(x * n, y * n, z * n);
+    }
+
+    public Vec3 mul(Vec3 v) {
+        return new Vec3(x * v.x, y * v.y, z * v.z);
     }
 
     @ReturnMutable
