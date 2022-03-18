@@ -313,8 +313,7 @@ public class UnaryOperation implements Value{
                 sb.append("!");
             }
 
-            value.writeGLSL(sb, context, shaderCompiler);
-            sb.append(".is_null"); //TODO: Implement nullability
+            context.getType(value.getType()).checkNullability(sb, value, shaderCompiler);
         }
 
 

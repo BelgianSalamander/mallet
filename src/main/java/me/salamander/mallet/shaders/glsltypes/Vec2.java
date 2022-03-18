@@ -7,6 +7,16 @@ public record Vec2(float x, float y) {
         this(v.x, v.y);
     }
 
+    public Vec2 normalized() {
+        float len = length();
+
+        return new Vec2(x / len, y / len);
+    }
+
+    public float length() {
+        return (float) Math.sqrt(x * x + y * y);
+    }
+
     public Vector2f toVector2f() {
         return new Vector2f(x, y);
     }

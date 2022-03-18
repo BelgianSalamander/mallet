@@ -20,6 +20,15 @@ public record Vec3(float x, float y, float z) {
         return new Vec3(x * v.x, y * v.y, z * v.z);
     }
 
+    public Vec3 normalized() {
+        float len = length();
+        return new Vec3(x / len, y / len, z / len);
+    }
+
+    public float length() {
+        return (float) Math.sqrt(x * x + y * y + z * z);
+    }
+
     @ReturnMutable
     public Vector3f toVector3f() {
         return new Vector3f(x, y, z);
@@ -29,4 +38,5 @@ public record Vec3(float x, float y, float z) {
     public String toString() {
         return "vec3(" + x + ", " + y + ", " + z + ")";
     }
+
 }

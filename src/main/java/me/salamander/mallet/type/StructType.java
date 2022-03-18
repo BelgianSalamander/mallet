@@ -3,6 +3,8 @@ package me.salamander.mallet.type;
 import me.salamander.mallet.MalletContext;
 import me.salamander.mallet.globject.vao.VAOLayout;
 import me.salamander.mallet.shaders.annotation.NullableType;
+import me.salamander.mallet.shaders.compiler.ShaderCompiler;
+import me.salamander.mallet.shaders.compiler.instruction.value.Value;
 import me.salamander.mallet.type.construct.JavaStyleConstructor;
 import me.salamander.mallet.type.construct.ObjectConstructor;
 import me.salamander.mallet.type.construct.UnsafeConstructor;
@@ -594,6 +596,17 @@ public class StructType extends MalletType {
         }
 
         throw new RuntimeException("Could not find field " + field + " in " + this.getName());
+    }
+
+    @Override
+    public void checkNullability(StringBuilder glsl, Value value, ShaderCompiler compiler) {
+        if (nullable) {
+            glsl.append("(");
+            value.writeGLSL(glsl, compiler.getGlobalContext(), compiler);
+            glsl.append(").isNull");
+        } else {
+            throw new RuntimeException("Cannot check nullability of non-nullable type " + this.getName());
+        }
     }
 
     @Override

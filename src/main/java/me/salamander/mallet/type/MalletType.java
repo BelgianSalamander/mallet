@@ -398,7 +398,7 @@ public abstract class MalletType {
         return false;
     }
 
-    public void checkNullability(StringBuilder glsl, Value value) {
+    public void checkNullability(StringBuilder glsl, Value value, ShaderCompiler compiler) {
         throw new UnsupportedOperationException("checkNullability not implemented for " + this.getClass().getSimpleName());
     }
 

@@ -255,8 +255,10 @@ public class EnumType extends MalletType{
     }
 
     @Override
-    public void checkNullability(StringBuilder glsl, Value value) {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public void checkNullability(StringBuilder glsl, Value value, ShaderCompiler compiler) {
+        glsl.append("((");
+        value.writeGLSL(glsl, compiler.getGlobalContext(), compiler);
+        glsl.append(").ordinal != -1)");
     }
 
     @Override
